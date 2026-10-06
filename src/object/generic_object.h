@@ -28,6 +28,8 @@
 #include "../chemistry/chemistry.h"
 #include "../chemistry/select_chemistry.h"
 #include "../atmosphere/eddy_diffusion.h"
+#include "../cloud/cloud_model.h"
+#include "../cloud/select_cloud_model.h"
 #include "../radiative_transfer/radiative_transfer.h"
 #include "../radiative_transfer/select_radiative_transfer.h"
 #include "../convection/convection.h"
@@ -50,9 +52,9 @@ struct ModelConfig {
 
   std::string opacity_path;                                          // cross-section data root
   std::vector<std::pair<std::string, std::string>> opacity_species;  // (symbol, data folder)
-  bool use_clouds = false;
 
   std::vector<ModuleSpec> chemistry;                                 // applied in order
+  std::vector<ModuleSpec> clouds;                                    // optical properties summed
   ModuleSpec radiative_transfer {"disort", {{"nb_streams", "4"}}};
   ModuleSpec convection {"mlt_dry"};
   ModuleSpec kzz {"mlt"};                                          // eddy diffusion profile
@@ -81,9 +83,9 @@ class GenericObject {
           spectral_grid_,
           &atmosphere,
           speciesSymbols(config.opacity_species),
-          speciesFolders(config.opacity_species),
-          config.use_clouds),
+          speciesFolders(config.opacity_species)),
         chemistry(selectChemistryModules(config.chemistry)),
+        clouds(selectCloudModels(config.clouds, spectral_grid_, config.nb_grid_points)),
         radiative_transfer(selectRadiativeTransfer(
           config.radiative_transfer, config.nb_grid_points, spectral_grid_)),
         convection(selectConvection(
@@ -98,8 +100,15 @@ class GenericObject {
         throw InvalidInput("chemistry", "at least one chemistry module is required\n");
 
       for (auto& c : chemistry) c->setSurfaceGravity(surface_gravity);
+      for (auto& c : clouds) c->setSurfaceGravity(surface_gravity);
 
       checkSolverConvectionPairing(solver, convection.get());
+
+      // prescribed clouds depend on the pressure grid only, so their optics are available right
+      // away; modules that need the state (temperature, composition, Kzz) see an atmosphere with
+      // zero temperature here and must leave their optics empty until initialize()/the loop
+      updateClouds();
+      applyClouds();
     }
     virtual ~GenericObject() {}
 
@@ -167,6 +176,74 @@ class GenericObject {
           "the model has no \"external\" chemistry module; add (\"external\", {}) last in chemistry\n");
       if (mixing_ratios.size() != atmosphere.pressure.size())
         throw InvalidInput("set_composition", "mixing ratio table must have one row per grid level\n");
+    }
+
+    // Hand a table of cloud optical properties to the `fixed` cloud module(s) that were configured
+    // without a file (fixed_cloud.h for the table convention). Takes effect at the next outer
+    // iteration (or immediately for a subsequent explicit forward evaluation).
+    void setCloudOpticalProperties(
+      const std::vector<double>& pressure,
+      const std::vector<double>& wavelength,
+      const std::vector<std::vector<double>>& optical_depth,
+      const std::vector<std::vector<double>>& single_scattering,
+      const std::vector<std::vector<double>>& asymmetry)
+    {
+      bool found = false;
+      for (auto& c : clouds)
+        if (auto* fixed = dynamic_cast<FixedCloud*>(c.get()))
+          if (!fixed->hasFile())
+          {
+            fixed->setTable(pressure, wavelength, optical_depth, single_scattering, asymmetry);
+            fixed->update(atmosphere);
+            found = true;
+          }
+      if (!found)
+        throw InvalidInput("set_cloud_optical_properties",
+          "the model has no \"fixed\" cloud module without a file; add (\"fixed\", {}) to clouds\n");
+      applyClouds();
+    }
+
+    // Diagnostics: the summed cloud optical depth per LAYER (nb_grid_points-1 values, 0 = bottom)
+    // at the spectral point closest to the given wavelength [micron]; the per-module values; the
+    // module type keywords.
+    std::vector<double> cloudOpticalDepth(const double wavelength) const
+    {
+      std::vector<double> tau(atmosphere.nb_grid_points - 1, 0.0);
+      for (const auto& c : clouds)
+        if (c->enabled)
+        {
+          const std::vector<double> t = c->opticalDepth(wavelength);
+          for (size_t j = 0; j < tau.size(); ++j) tau[j] += t[j];
+        }
+      return tau;
+    }
+
+    std::vector<std::vector<double>> cloudOpticalDepthPerModule(const double wavelength) const
+    {
+      std::vector<std::vector<double>> out;
+      for (const auto& c : clouds) out.push_back(c->opticalDepth(wavelength));
+      return out;
+    }
+
+    // The COMBINED cloud optical properties the radiative transfer sees, per layer at the spectral
+    // point closest to `wavelength` [micron]: {optical depth, single-scattering albedo, asymmetry}.
+    std::vector<std::vector<double>> cloudOptics(const double wavelength) const
+    {
+      const std::vector<double>& wl = spectral_grid->wavelength_list;
+      size_t best = 0;
+      for (size_t k = 1; k < wl.size(); ++k)
+        if (std::abs(wl[k] - wavelength) < std::abs(wl[best] - wavelength)) best = k;
+      return {
+        opacity.cloud_optical_depths[best],
+        opacity.cloud_single_scattering[best],
+        opacity.cloud_asym_param[best]};
+    }
+
+    std::vector<std::string> cloudModuleTypes() const
+    {
+      std::vector<std::string> out;
+      for (const auto& c : clouds) out.push_back(c->type);
+      return out;
     }
 
     // Initialise the atmosphere from an analytic temperature profile plus chemistry.
@@ -268,6 +345,8 @@ class GenericObject {
       calcAtmosphereStructure();
       updateKzz();
       onInitialized();
+      updateClouds();
+      applyClouds();
 
       std::cout << "\n  Initialized from " << profile.type << " temperature profile + chemistry.\n";
     }
@@ -285,6 +364,8 @@ class GenericObject {
       calcAtmosphereStructure();
       updateKzz();
       onInitialized();
+      updateClouds();
+      applyClouds();
 
       std::cout << "\n  Initialized from external arrays.\n";
     }
@@ -300,6 +381,7 @@ class GenericObject {
     OpacityCalculation opacity;
 
     std::vector<std::unique_ptr<Chemistry>> chemistry;
+    std::vector<std::unique_ptr<CloudModel>> clouds;
     std::unique_ptr<RadiativeTransfer> radiative_transfer;
     std::unique_ptr<Convection> convection;
     std::unique_ptr<EddyDiffusion> eddy_diffusion;
@@ -309,6 +391,7 @@ class GenericObject {
     double bottom_radius;         // cm; 0 = plane-parallel with constant gravity
     bool use_variable_gravity;
     bool warm_start = false;      // set by compute() for the duration of one call
+    bool clouds_applied = false;  // the opacity's cloud arrays hold a nonzero cloud
     size_t stall_count = 0;       // consecutive iterations without any temperature change
 
     // Stagnation exit for the iteration loops. A Newton corrector that proposes NO change at all
@@ -389,6 +472,45 @@ class GenericObject {
     void calcAtmosphereStructure()
     {
       atmosphere.calcAtmosphereStructure(surface_gravity, bottom_radius, use_variable_gravity);
+    }
+
+    // Gas opacities plus the cloud optical properties for the radiative transfer.
+    // update_clouds = true: recompute every cloud module from the committed atmosphere first --
+    // the iteration loops do (once per outer iteration). The Newton trial evaluations do NOT: the
+    // cloud is an operator-split (lagged) quantity there, like Kzz and the composition's
+    // T-dependence in the RT Jacobian, so the corrector only ever sees the committed optics.
+    void calcOpacity(const bool update_clouds = false)
+    {
+      opacity.calculate();
+      if (update_clouds) updateClouds();
+      applyClouds();
+    }
+
+    void updateClouds()
+    {
+      for (auto& c : clouds)
+        if (c->enabled)
+        {
+          c->setKzz(atmosphere.kzz);
+          c->update(atmosphere);
+        }
+    }
+
+    // sum the committed optics of the enabled cloud modules into the opacity's cloud arrays
+    void applyClouds()
+    {
+      std::vector<const CloudOpticalProperties*> parts;
+      for (const auto& c : clouds)
+        if (c->enabled) parts.push_back(&c->optics());
+
+      if (parts.empty() && !clouds_applied) return;   // arrays are zero from construction
+
+      combineCloudOptics(
+        parts,
+        opacity.cloud_optical_depths,
+        opacity.cloud_single_scattering,
+        opacity.cloud_asym_param);
+      clouds_applied = !parts.empty();
     }
 
     // Limit the relative temperature change per iteration (relaxation schemes). Skipped when the

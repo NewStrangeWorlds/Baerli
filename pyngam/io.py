@@ -81,6 +81,10 @@ def save_model(filename, model, grid=None, attrs=None):
             "kzz": (["grid_point"], np.array(atm.kzz),
                 {"units": "cm2/s", "long_name": "Eddy diffusion coefficient"}),
 
+            # per-layer cloud optical depth at 1 micron (layer j between levels j and j+1)
+            "cloud_optical_depth": (["layer"], np.array(model.cloud_optical_depth(1.0)),
+                {"long_name": "Cloud optical depth per layer at 1 micron (sum over modules)"}),
+
             # 2D number densities (grid_point x species)
             "number_densities": (["grid_point", "species"],
                 np.array(atm.number_densities)[:, :nb_species],

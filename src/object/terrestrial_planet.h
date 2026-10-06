@@ -71,7 +71,7 @@ class TerrestrialPlanet : public GenericObject {
       {
         calcChemistry();
         calcAtmosphereStructure();
-        opacity.calculate();
+        calcOpacity();
       }
       RadiativeBoundaryConditions bc;
       bc.incident_flux = stellar_flux;
@@ -122,7 +122,7 @@ class TerrestrialPlanet : public GenericObject {
           {
             calcChemistry(/*update_kzz=*/false);
             calcAtmosphereStructure();
-            opacity.calculate();
+            calcOpacity();
           }
           RadiativeBoundaryConditions bc;
           bc.incident_flux = stellar_flux;
@@ -145,7 +145,7 @@ class TerrestrialPlanet : public GenericObject {
           atmosphere.temperature = T;
           calcChemistry(/*update_kzz=*/false);
           calcAtmosphereStructure();
-          opacity.calculate();
+          calcOpacity();
           RadiativeBoundaryConditions bc;
           bc.incident_flux = stellar_flux;
           bc.zenith_angle = zenith_angle;
@@ -194,7 +194,7 @@ class TerrestrialPlanet : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Build boundary conditions
         RadiativeBoundaryConditions bc;

@@ -43,8 +43,7 @@ class OpacityCalculation {
       SpectralGrid* spectral_grid_,
       Atmosphere* atmosphere_,
       const std::vector<std::string>& opacity_species_symbol,
-      const std::vector<std::string>& opacity_species_folder,
-      const bool use_cloud_)
+      const std::vector<std::string>& opacity_species_folder)
       : spectral_grid(spectral_grid_)
       , atmosphere(atmosphere_)
       , transport_coeff(
@@ -52,8 +51,14 @@ class OpacityCalculation {
           spectral_grid_,
           opacity_species_symbol,
           opacity_species_folder)
-      , use_cloud(use_cloud_)
-      {}
+      {
+        const size_t nb_layers = atmosphere->nb_grid_points - 1;
+        cloud_optical_depths.assign(spectral_grid->nbSpectralPoints(), std::vector<double>(nb_layers, 0.0));
+        cloud_single_scattering.assign(spectral_grid->nbSpectralPoints(), std::vector<double>(nb_layers, 0.0));
+        cloud_asym_param.assign(spectral_grid->nbSpectralPoints(), std::vector<double>(nb_layers, 0.0));
+      }
+    //gas opacities (absorption and scattering coefficients per level); the cloud arrays below are
+    //NOT touched here -- the owning object writes them (GenericObject::applyClouds)
     void calculate();
 
     std::vector< std::vector<double> > absorption_coeff;
@@ -69,6 +74,9 @@ class OpacityCalculation {
     std::vector< std::vector<double> > band_peak_coeff;
     std::vector<double> band_wavenumber;   //band centres [cm^-1]
 
+    //per-LAYER cloud optical properties [spectral point][layer], nb_layers = nb_grid_points-1,
+    //layer j between levels j and j+1 (0 = bottom); the sum over the model's cloud modules
+    //(cloud/cloud_model.h). Zero without clouds.
     std::vector< std::vector<double> > cloud_optical_depths;
     std::vector< std::vector<double> > cloud_single_scattering;
     std::vector< std::vector<double> > cloud_asym_param;
@@ -77,15 +85,11 @@ class OpacityCalculation {
     SpectralGrid* spectral_grid;
     Atmosphere* atmosphere;
     TransportCoefficients transport_coeff;
-
-    bool use_cloud = false;
 };
 
 
 
 inline void OpacityCalculation::calculate()
-  //std::vector<CloudModel*>& cloud_models,
-  //const std::vector<double>& cloud_parameter)
 {
   const size_t nb_grid_points = atmosphere->nb_grid_points;
   const size_t nb_spectral_points = spectral_grid->nbSpectralPoints();
@@ -160,10 +164,6 @@ inline void OpacityCalculation::calculate()
       band_peak_coeff[b][i] = band_peak_level[b];
     }
   }
-
-  cloud_optical_depths.assign(nb_spectral_points, std::vector<double>(nb_grid_points-1, 0.0));
-  cloud_single_scattering.assign(nb_spectral_points, std::vector<double>(nb_grid_points-1, 0.0));
-  cloud_asym_param.assign(nb_spectral_points, std::vector<double>(nb_grid_points-1, 0.0));
 }
 
 

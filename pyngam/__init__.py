@@ -8,7 +8,7 @@ The compiled core (``pyngam._pyngam``) provides the spectral grid and the three 
 * the same configuration can come from a file (:func:`pyngam.load_config`,
   :func:`pyngam.build_model`, ``python -m pyngam config.toml``).
 
-Models are configured with keyword arguments. Pluggable components (chemistry, radiative
+Models are configured with keyword arguments. Pluggable components (chemistry, clouds, radiative
 transfer, convection, solver, stellar spectrum, surface, initial profile) are *module specs*:
 a type name, a ``(type, {parameters})`` tuple, or a dict with a ``"type"`` key. Parameters that
 a module does not accept are rejected, so a knob belonging to one scheme can never be passed
@@ -19,13 +19,14 @@ from . import _pyngam
 from ._pyngam import species_symbols, Atmosphere, RadiativeTransferOutput, model_config_doc
 from .io import save_model, load_model_data, load_init_arrays, load_temperature, load_output_config
 from .config import load_config, build_model, run
+from . import clouds
 
 __all__ = [
     "SpectralGrid", "BrownDwarf", "GasPlanet", "TerrestrialPlanet",
     "species_symbols", "Atmosphere", "RadiativeTransferOutput", "model_config_doc",
     "save_model", "load_model_data", "load_init_arrays", "load_temperature", "load_output_config",
     "load_config", "build_model", "run", "spec_to_dict", "mixing_ratios",
-    "KineticsCoupling", "interpolate_log", "neovulcan_dir", "load_vulcan",
+    "KineticsCoupling", "interpolate_log", "neovulcan_dir", "load_vulcan", "clouds",
 ]
 
 
@@ -55,7 +56,7 @@ def _specs_to_dicts(specs):
 
 
 _SPEC_KEYS = ("radiative_transfer", "convection", "solver", "stellar_spectrum", "surface", "kzz")
-_SPEC_LIST_KEYS = ("chemistry",)
+_SPEC_LIST_KEYS = ("chemistry", "clouds")
 
 
 def _jsonable(value):

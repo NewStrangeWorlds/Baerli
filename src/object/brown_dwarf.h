@@ -85,7 +85,7 @@ class BrownDwarf : public GenericObject {
             {
               calcChemistry(/*update_kzz=*/false);
               calcAtmosphereStructure();
-              opacity.calculate();
+              calcOpacity();
             }
             radiation_field.compute_jacobian = compute_jacobian;
             radiative_transfer->calculate(atmosphere, opacity, radiation_field);
@@ -129,7 +129,7 @@ class BrownDwarf : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Radiative transfer
         radiative_transfer->calculate(atmosphere, opacity, radiation_field);

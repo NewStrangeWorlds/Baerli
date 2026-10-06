@@ -141,7 +141,7 @@ static ModelConfig makeModelConfig(
   const std::vector<double>& boundary_pressures,
   const std::string& opacity_path,
   const std::vector<std::pair<std::string, std::string>>& opacity_species,
-  const bool use_clouds,
+  const py::object& clouds,
   const py::object& chemistry,
   const py::object& radiative_transfer,
   const py::object& convection,
@@ -153,7 +153,7 @@ static ModelConfig makeModelConfig(
   config.boundary_pressures = boundary_pressures;
   config.opacity_path = opacity_path.empty() ? grid.crossSectionFilePath() : opacity_path;
   config.opacity_species = opacity_species;
-  config.use_clouds = use_clouds;
+  config.clouds = toModuleSpecs(clouds, "clouds");
   config.chemistry = toModuleSpecs(chemistry, "chemistry");
   config.radiative_transfer = specOrDefault(
     radiative_transfer, ModelConfig().radiative_transfer, "radiative_transfer");
@@ -169,7 +169,7 @@ static ModelConfig makeModelConfig(
   py::arg("boundary_pressures") = std::vector<double>{1e2, 1e-6}, \
   py::arg("opacity_path") = "", \
   py::arg("opacity_species") = std::vector<std::pair<std::string, std::string>>{}, \
-  py::arg("use_clouds") = false, \
+  py::arg("clouds") = py::none(), \
   py::arg("chemistry"), \
   py::arg("radiative_transfer") = py::none(), \
   py::arg("convection") = py::none(), \
@@ -182,7 +182,14 @@ static const char* model_config_doc =
   "  boundary_pressures  [bottom, top] in bar\n"
   "  opacity_path        cross-section data root (default: the grid's)\n"
   "  opacity_species     list of (species symbol, data folder) pairs\n"
-  "  use_clouds          include cloud opacity (default False)\n"
+  "  clouds              list of cloud module specs; their optical properties are summed:\n"
+  "                        ('fixed', {file})  prescribed tau/w/g over (pressure, wavelength)\n"
+  "                        ('fixed', {})      table handed over with set_cloud_optical_properties\n"
+  "                        ('mie_slab', {condensate, particle_radius [micron], sigma=1,\n"
+  "                                      top_pressure, bottom_pressure, optical_depth +\n"
+  "                                      reference_wavelength=1 | column_density,\n"
+  "                                      mie_resolution=200})  Mie particles of one condensate\n"
+  "                      default: no clouds\n"
   "  chemistry           list of chemistry module specs, applied in order:\n"
   "                        ('equilibrium', {parameter_file, metallicity=1, c_to_o=0.5})\n"
   "                        ('isoprofile', {symbol: mixing ratio, ...})\n"
@@ -221,7 +228,7 @@ static std::unique_ptr<BrownDwarf> make_brown_dwarf(
   const std::vector<double>& boundary_pressures,
   const std::string& opacity_path,
   const std::vector<std::pair<std::string, std::string>>& opacity_species,
-  bool use_clouds,
+  const py::object& clouds,
   const py::object& chemistry,
   const py::object& radiative_transfer,
   const py::object& convection,
@@ -229,7 +236,7 @@ static std::unique_ptr<BrownDwarf> make_brown_dwarf(
   const py::object& kzz)
 {
   const ModelConfig config = makeModelConfig(
-    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, use_clouds,
+    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, clouds,
     chemistry, radiative_transfer, convection, solver, kzz);
 
   return std::make_unique<BrownDwarf>(
@@ -250,7 +257,7 @@ static std::unique_ptr<GasPlanet> make_gas_planet(
   const std::vector<double>& boundary_pressures,
   const std::string& opacity_path,
   const std::vector<std::pair<std::string, std::string>>& opacity_species,
-  bool use_clouds,
+  const py::object& clouds,
   const py::object& chemistry,
   const py::object& radiative_transfer,
   const py::object& convection,
@@ -258,7 +265,7 @@ static std::unique_ptr<GasPlanet> make_gas_planet(
   const py::object& kzz)
 {
   const ModelConfig config = makeModelConfig(
-    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, use_clouds,
+    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, clouds,
     chemistry, radiative_transfer, convection, solver, kzz);
 
   return std::make_unique<GasPlanet>(
@@ -278,7 +285,7 @@ static std::unique_ptr<TerrestrialPlanet> make_terrestrial_planet(
   const std::vector<double>& boundary_pressures,
   const std::string& opacity_path,
   const std::vector<std::pair<std::string, std::string>>& opacity_species,
-  bool use_clouds,
+  const py::object& clouds,
   const py::object& chemistry,
   const py::object& radiative_transfer,
   const py::object& convection,
@@ -286,7 +293,7 @@ static std::unique_ptr<TerrestrialPlanet> make_terrestrial_planet(
   const py::object& kzz)
 {
   const ModelConfig config = makeModelConfig(
-    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, use_clouds,
+    grid, nb_grid_points, boundary_pressures, opacity_path, opacity_species, clouds,
     chemistry, radiative_transfer, convection, solver, kzz);
 
   return std::make_unique<TerrestrialPlanet>(
@@ -344,6 +351,27 @@ static void defineObjectMethods(py::class_<Object>& cls)
       "mixing_ratios[level][k] on this model's pressure grid (index 0 = bottom). Unknown symbols\n"
       "are ignored; the supplied species are rescaled per level to the budget the preceding\n"
       "modules gave them, everything else is left untouched.")
+    .def("set_cloud_optical_properties", &Object::setCloudOpticalProperties,
+      py::arg("pressure"), py::arg("wavelength"), py::arg("optical_depth"),
+      py::arg("single_scattering"), py::arg("asymmetry"),
+      "Hand a table of cloud optical properties to the 'fixed' cloud module(s) configured\n"
+      "without a file. pressure[np] in bar (levels, any order), wavelength[nw] in micron,\n"
+      "optical_depth / single_scattering / asymmetry [np][nw]; the row at pressure p_k holds the\n"
+      "optical depth of the input layer between p_k and the next level towards lower pressure.\n"
+      "Mapped conservatively (cumulative optical depth in ln p) onto the model layers; see\n"
+      "pyngam.clouds.slab for a grey slab.")
+    .def("cloud_optical_depth", &Object::cloudOpticalDepth, py::arg("wavelength") = 1.0,
+      "Summed cloud optical depth per layer (nb_grid_points-1 values, 0 = bottom) at the spectral\n"
+      "point closest to `wavelength` [micron].")
+    .def("cloud_optical_depth_per_module", &Object::cloudOpticalDepthPerModule,
+      py::arg("wavelength") = 1.0,
+      "Per cloud module: optical depth per layer at the spectral point closest to `wavelength`.")
+    .def("cloud_optics", &Object::cloudOptics, py::arg("wavelength") = 1.0,
+      "The combined cloud optical properties the radiative transfer uses, per layer at the\n"
+      "spectral point closest to `wavelength` [micron]: (optical_depth, single_scattering,\n"
+      "asymmetry), each with nb_grid_points-1 values (0 = bottom).")
+    .def("cloud_module_types", &Object::cloudModuleTypes,
+      "Type keywords of the configured cloud modules, in order.")
     .def_readonly("radiation_field", &Object::radiation_field)
     .def_property_readonly("atmosphere", &Object::getAtmosphere);
 }

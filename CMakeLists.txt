@@ -83,6 +83,19 @@ else()
   set(NGAM_NEOVULCAN_DIR "")
 endif()
 
+# LX-MIE (Kitzmann & Heng 2018): Mie efficiencies for the cloud optics. Only the library target in
+# src/mie is built. Override with -DFETCHCONTENT_SOURCE_DIR_LXMIE=/path/to/lx-mie for a local checkout.
+FetchContent_Declare(
+  lxmie
+  GIT_REPOSITORY https://github.com/newstrangeworlds/lx-mie
+  GIT_TAG        38cc6d97c2268d58c41ccfc3955283ab6ee2ca44 # master: C++ and Python entry points accept n+ik or n-ik
+)
+FetchContent_GetProperties(lxmie)
+if(NOT lxmie_POPULATED)
+  FetchContent_Populate(lxmie)
+  add_subdirectory(${lxmie_SOURCE_DIR}/src/mie ${lxmie_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 find_package(OpenMP REQUIRED C CXX)
 
 if(BUILD_PYTHON_BINDINGS)
@@ -121,6 +134,9 @@ set(LIB_SRC
   src/chemistry/mw_humidity_chemistry.cpp
   src/chemistry/quench_chemistry.cpp
   src/chemistry/external_chemistry.cpp
+  src/cloud/fixed_cloud.cpp
+  src/cloud/cloud_optics.cpp
+  src/cloud/mie_slab_cloud.cpp
   src/temperature/guillot_temperature.cpp
   src/temperature/milne_solution_temperature.cpp
   src/temperature/time_stepping_temperature.cpp
@@ -135,7 +151,9 @@ set(LIB_SRC
 
 # Static library
 add_library(ngam_lib STATIC ${LIB_SRC})
-target_link_libraries(ngam_lib PUBLIC fastchem_lib OpenMP::OpenMP_CXX disortpp adding_doubling)
+target_link_libraries(ngam_lib PUBLIC fastchem_lib OpenMP::OpenMP_CXX disortpp adding_doubling lxmie_lib)
+# built-in data (refractive indices for the cloud optics, ...)
+target_compile_definitions(ngam_lib PRIVATE NGAM_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 # Eigen (shared FetchContent populated by disortpp) -- for unsupported/Eigen/NonLinearOptimization
 # (MINPACK hybrj port) used by the clima RCE corrector's inner solver.
 target_include_directories(ngam_lib PRIVATE ${eigen_SOURCE_DIR})

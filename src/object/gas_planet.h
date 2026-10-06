@@ -114,7 +114,7 @@ class GasPlanet : public GenericObject {
             {
               calcChemistry(/*update_kzz=*/false);
               calcAtmosphereStructure();
-              opacity.calculate();
+              calcOpacity();
             }
             RadiativeBoundaryConditions bc;
             bc.incident_flux = stellar_flux;
@@ -163,7 +163,7 @@ class GasPlanet : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Boundary conditions: irradiated top, no surface (semi-infinite bottom)
         RadiativeBoundaryConditions bc;
