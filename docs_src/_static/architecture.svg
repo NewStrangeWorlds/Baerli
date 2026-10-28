@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="100%" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<style>.b{fill:#fdf6ee;stroke:#8b4513;stroke-width:1.4;rx:8} .t{fill:#222} .k{fill:#8b4513;font-family:monospace;font-size:12px} .h{font-weight:bold;fill:#222;font-size:14px} .arr{stroke:#555;stroke-width:1.6;fill:none;marker-end:url(#m)} .grey{fill:#eeeeee;stroke:#888;stroke-width:1.2;rx:8}</style>
+<defs><marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#555"/></marker></defs>
+<rect class="b" x="20" y="20" width="200" height="84"/>
+<text class="h" x="30" y="40">SpectralGrid</text>
+<text class="k" x="30" y="60">constant_resolution</text>
+<text class="k" x="30" y="76">constant_wavenumber_step</text>
+<text class="k" x="30" y="92">constant_wavelength_step</text>
+<text class="k" x="30" y="108">covering</text>
+<rect class="b" x="20" y="124" width="200" height="56"/>
+<text class="h" x="30" y="144">opacity_species</text>
+<text class="k" x="30" y="164">(symbol, folder) pairs</text>
+<rect class="b" x="20" y="200" width="200" height="86"/>
+<text class="h" x="30" y="220">object parameters</text>
+<text class="k" x="30" y="240">gravity, T_eff / T_int</text>
+<text class="k" x="30" y="256">instellation, zenith angle</text>
+<text class="k" x="30" y="272">stellar_spectrum, surface</text>
+<rect class="grey" x="260" y="20" width="420" height="480"/>
+<text class="h" x="272" y="42">one iteration of model.compute()</text>
+<rect class="b" x="276" y="56" width="388" height="52"/>
+<text class="h" x="286" y="76">1  chemistry</text>
+<text class="k" x="286" y="96">equilibrium | isoprofile | fixed | manabe_wetherald | quench | external</text>
+<path class="arr" d="M470,108 L470,118"/>
+<rect class="b" x="276" y="118" width="388" height="52"/>
+<text class="h" x="286" y="138">2  structure</text>
+<text class="k" x="286" y="158">hydrostatic equilibrium, altitude, scale height</text>
+<path class="arr" d="M470,170 L470,180"/>
+<rect class="b" x="276" y="180" width="388" height="52"/>
+<text class="h" x="286" y="200">3  Kzz + clouds</text>
+<text class="k" x="286" y="220">kzz: mlt | constant | power_law;  clouds: fixed | mie_slab | ackerman_marley</text>
+<path class="arr" d="M470,232 L470,242"/>
+<rect class="b" x="276" y="242" width="388" height="52"/>
+<text class="h" x="286" y="262">4  opacity</text>
+<text class="k" x="286" y="282">sampled cross sections + CIA + Rayleigh + continua + cloud optics (ramp)</text>
+<path class="arr" d="M470,294 L470,304"/>
+<rect class="b" x="276" y="304" width="388" height="52"/>
+<text class="h" x="286" y="324">5  radiative transfer</text>
+<text class="k" x="286" y="344">disort | adding_doubling  ->  F, J, dF/dT, dJ/dT</text>
+<path class="arr" d="M470,356 L470,366"/>
+<rect class="b" x="276" y="366" width="388" height="52"/>
+<text class="h" x="286" y="386">6  temperature correction</text>
+<text class="k" x="286" y="406">solver: ratio_ul | flux_divergence | ptc | time_stepping | helios</text>
+<path class="arr" d="M470,418 L470,428"/>
+<rect class="b" x="276" y="428" width="388" height="52"/>
+<text class="h" x="286" y="448">7  convection</text>
+<text class="k" x="286" y="468">mlt_dry | mlt_moist (inside the Newton)  |  dry | moist (adjustment)</text>
+<path class="arr" d="M664,470 L672,470 L672,82 L664,82"/>
+<text class="t" x="520" y="492">until the residual &lt; convergence_threshold</text>
+<rect class="b" x="720" y="20" width="220" height="84"/>
+<text class="h" x="730" y="40">model.atmosphere</text>
+<text class="k" x="730" y="60">T, p, z, n_i, mmw, Kzz,</text>
+<text class="k" x="730" y="76">convective mask,</text>
+<text class="k" x="730" y="92">condensates</text>
+<rect class="b" x="720" y="124" width="220" height="84"/>
+<text class="h" x="730" y="144">model.radiation_field</text>
+<text class="k" x="730" y="164">F_net, F_up, F_down, J,</text>
+<text class="k" x="730" y="180">spectrum, dF/dp,</text>
+<text class="k" x="730" y="196">Jacobians</text>
+<rect class="b" x="720" y="228" width="220" height="56"/>
+<text class="h" x="730" y="248">cloud diagnostics</text>
+<text class="k" x="730" y="268">tau, w, g, r_g, r_eff, fsed</text>
+<rect class="b" x="720" y="320" width="220" height="72"/>
+<text class="h" x="730" y="340">save_model(...)</text>
+<text class="k" x="730" y="360">NetCDF4 with the full</text>
+<text class="k" x="730" y="376">configuration (provenance)</text>
+<path class="arr" d="M220,62 L258,62"/>
+<path class="arr" d="M220,152 L258,152"/>
+<path class="arr" d="M220,243 L258,243"/>
+<path class="arr" d="M682,62 L718,62"/>
+<path class="arr" d="M682,166 L718,166"/>
+<path class="arr" d="M682,256 L718,256"/>
+<path class="arr" d="M830,284 L830,318"/>
+<rect class="b" x="20" y="320" width="200" height="90"/>
+<text class="h" x="30" y="340">model.initialize(...)</text>
+<text class="k" x="30" y="360">adiabat | milne | const |</text>
+<text class="k" x="30" y="376">guillot | from file</text>
+<text class="k" x="30" y="392">+ initial chemistry</text>
+<path class="arr" d="M220,365 L258,365"/>
+</svg>
