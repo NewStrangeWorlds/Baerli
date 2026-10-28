@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 #include <iomanip>
+#include <map>
 
 #include "../config/module_params.h"
 #include "../spectral_grid/spectral_grid.h"
@@ -28,6 +29,8 @@
 #include "../chemistry/chemistry.h"
 #include "../chemistry/select_chemistry.h"
 #include "../atmosphere/eddy_diffusion.h"
+#include "../cloud/cloud_model.h"
+#include "../cloud/select_cloud_model.h"
 #include "../radiative_transfer/radiative_transfer.h"
 #include "../radiative_transfer/select_radiative_transfer.h"
 #include "../convection/convection.h"
@@ -50,9 +53,10 @@ struct ModelConfig {
 
   std::string opacity_path;                                          // cross-section data root
   std::vector<std::pair<std::string, std::string>> opacity_species;  // (symbol, data folder)
-  bool use_clouds = false;
 
   std::vector<ModuleSpec> chemistry;                                 // applied in order
+  std::vector<ModuleSpec> clouds;                                    // optical properties summed
+  ModuleSpec cloud_ramp {"default"};                                 // onset of the cloud opacity
   ModuleSpec radiative_transfer {"disort", {{"nb_streams", "4"}}};
   ModuleSpec convection {"mlt_dry"};
   ModuleSpec kzz {"mlt"};                                          // eddy diffusion profile
@@ -81,9 +85,9 @@ class GenericObject {
           spectral_grid_,
           &atmosphere,
           speciesSymbols(config.opacity_species),
-          speciesFolders(config.opacity_species),
-          config.use_clouds),
+          speciesFolders(config.opacity_species)),
         chemistry(selectChemistryModules(config.chemistry)),
+        clouds(selectCloudModels(config.clouds, spectral_grid_, config.nb_grid_points)),
         radiative_transfer(selectRadiativeTransfer(
           config.radiative_transfer, config.nb_grid_points, spectral_grid_)),
         convection(selectConvection(
@@ -98,8 +102,45 @@ class GenericObject {
         throw InvalidInput("chemistry", "at least one chemistry module is required\n");
 
       for (auto& c : chemistry) c->setSurfaceGravity(surface_gravity);
+      for (auto& c : clouds) c->setSurfaceGravity(surface_gravity);
+
+      bool chemistry_has_condensates = false;
+      for (auto& c : chemistry) if (c->condensates() != nullptr) chemistry_has_condensates = true;
+      for (auto& c : clouds)
+        if (c->requiresCondensates() && !chemistry_has_condensates)
+          throw InvalidInput("clouds",
+            "the " + c->type + " cloud module needs the condensation increments of the equilibrium "
+            "chemistry: add\n  condensation=\"rainout\"  to the equilibrium chemistry spec and list the "
+            "condensate data\nfile in the FastChem parameter file (see fastchem_parameters_condensates.dat)\n");
 
       checkSolverConvectionPairing(solver, convection.get());
+
+      // the cloud ramp: how the cloud opacity is switched on in the iteration (see updateCloudScale)
+      {
+        ParamReader reader(config.cloud_ramp, "cloud_ramp");
+        if (config.cloud_ramp.type == "default")
+        {
+          cloud_ramp_active = !clouds.empty();
+          cloud_ramp_tau_start = reader.getDouble("tau_start", 1.0);
+          cloud_ramp_gate = reader.getDouble("gate", 1e-2);
+          cloud_ramp_factor = reader.getDouble("factor", 2.0);
+          cloud_ramp_backoff = reader.getDouble("backoff", 2.0);
+          if (cloud_ramp_factor <= 1.0) throw InvalidInput("cloud_ramp", "factor must be > 1\n");
+          if (cloud_ramp_backoff <= 0.0) throw InvalidInput("cloud_ramp", "backoff must be positive\n");
+        }
+        else if (config.cloud_ramp.type == "none")
+          cloud_ramp_active = false;
+        else
+          throw InvalidInput("cloud_ramp", "cloud_ramp type must be 'default' or 'none'\n");
+        reader.finish();
+        cloud_scale = cloud_ramp_active ? 0.0 : 1.0;
+      }
+
+      // prescribed clouds depend on the pressure grid only, so their optics are available right
+      // away; modules that need the state (temperature, composition, Kzz) see an atmosphere with
+      // zero temperature here and must leave their optics empty until initialize()/the loop
+      updateClouds();
+      applyClouds();
     }
     virtual ~GenericObject() {}
 
@@ -118,6 +159,9 @@ class GenericObject {
       warm_start = warm_start_;
       stall_count = 0;
       residual_history.clear();
+      last_residual = -1.0;
+      easy_start_done = false;
+      for (auto& c : clouds) c->setWarmStart(warm_start_);
 
       bool converged = false;
       try { converged = computeAtmosphericStructure(); }
@@ -125,6 +169,7 @@ class GenericObject {
 
       solver = saved;
       warm_start = false;
+      for (auto& c : clouds) c->setWarmStart(false);
       return converged;
     }
 
@@ -167,6 +212,104 @@ class GenericObject {
           "the model has no \"external\" chemistry module; add (\"external\", {}) last in chemistry\n");
       if (mixing_ratios.size() != atmosphere.pressure.size())
         throw InvalidInput("set_composition", "mixing ratio table must have one row per grid level\n");
+    }
+
+    // Hand a table of cloud optical properties to the `fixed` cloud module(s) that were configured
+    // without a file (fixed_cloud.h for the table convention). Takes effect at the next outer
+    // iteration (or immediately for a subsequent explicit forward evaluation).
+    void setCloudOpticalProperties(
+      const std::vector<double>& pressure,
+      const std::vector<double>& wavelength,
+      const std::vector<std::vector<double>>& optical_depth,
+      const std::vector<std::vector<double>>& single_scattering,
+      const std::vector<std::vector<double>>& asymmetry)
+    {
+      bool found = false;
+      for (auto& c : clouds)
+        if (auto* fixed = dynamic_cast<FixedCloud*>(c.get()))
+          if (!fixed->hasFile())
+          {
+            fixed->setTable(pressure, wavelength, optical_depth, single_scattering, asymmetry);
+            fixed->update(atmosphere);
+            found = true;
+          }
+      if (!found)
+        throw InvalidInput("set_cloud_optical_properties",
+          "the model has no \"fixed\" cloud module without a file; add (\"fixed\", {}) to clouds\n");
+      applyClouds();
+    }
+
+    // Diagnostic: recompute the composition at the CURRENT temperature in the given mode (lagged =
+    // the Newton's trial path, e.g. the depleted gas-only FastChem call; not lagged = the committed
+    // path, e.g. the rainout) and return the number densities. Leaves the committed composition
+    // in place afterwards.
+    std::vector<std::vector<double>> recomputeChemistry(const bool lagged)
+    {
+      const auto saved = atmosphere.number_densities;
+      const auto saved_mmw = atmosphere.mean_molecular_weight;
+      const auto saved_cond = atmosphere.condensates;
+
+      calcChemistry(/*update_kzz=*/!lagged);
+      const auto result = atmosphere.number_densities;
+
+      atmosphere.number_densities = saved;
+      atmosphere.mean_molecular_weight = saved_mmw;
+      atmosphere.condensates = saved_cond;
+      return result;
+    }
+
+    // Diagnostics: the summed cloud optical depth per LAYER (nb_grid_points-1 values, 0 = bottom)
+    // at the spectral point closest to the given wavelength [micron]; the per-module values; the
+    // module type keywords.
+    std::vector<double> cloudOpticalDepth(const double wavelength) const
+    {
+      std::vector<double> tau(atmosphere.nb_grid_points - 1, 0.0);
+      for (const auto& c : clouds)
+        if (c->enabled)
+        {
+          const std::vector<double> t = c->opticalDepth(wavelength);
+          for (size_t j = 0; j < tau.size(); ++j) tau[j] += t[j];
+        }
+      return tau;
+    }
+
+    std::vector<std::vector<double>> cloudOpticalDepthPerModule(const double wavelength) const
+    {
+      std::vector<std::vector<double>> out;
+      for (const auto& c : clouds) out.push_back(c->opticalDepth(wavelength));
+      return out;
+    }
+
+    // The COMBINED cloud optical properties the radiative transfer sees, per layer at the spectral
+    // point closest to `wavelength` [micron]: {optical depth, single-scattering albedo, asymmetry}.
+    std::vector<std::vector<double>> cloudOptics(const double wavelength) const
+    {
+      const std::vector<double>& wl = spectral_grid->wavelength_list;
+      size_t best = 0;
+      for (size_t k = 1; k < wl.size(); ++k)
+        if (std::abs(wl[k] - wavelength) < std::abs(wl[best] - wavelength)) best = k;
+      return {
+        opacity.cloud_optical_depths[best],
+        opacity.cloud_single_scattering[best],
+        opacity.cloud_asym_param[best]};
+    }
+
+    // per-module diagnostics (name -> per-layer values), see CloudModel::diagnostics
+    std::vector<std::map<std::string, std::vector<double>>> cloudDiagnostics() const
+    {
+      std::vector<std::map<std::string, std::vector<double>>> out;
+      for (const auto& c : clouds) out.push_back(c->diagnostics());
+      return out;
+    }
+
+    // the factor the cloud optical depths are multiplied with in the RT (the cloud ramp)
+    double cloudRampScale() const { return cloud_scale; }
+
+    std::vector<std::string> cloudModuleTypes() const
+    {
+      std::vector<std::string> out;
+      for (const auto& c : clouds) out.push_back(c->type);
+      return out;
     }
 
     // Initialise the atmosphere from an analytic temperature profile plus chemistry.
@@ -221,6 +364,7 @@ class GenericObject {
             atmosphere.number_densities,
             atmosphere.mean_molecular_weight);
         }
+        storeCondensates(init_chemistry);
       };
 
       ParamReader reader(profile, "initial_profile");
@@ -268,6 +412,8 @@ class GenericObject {
       calcAtmosphereStructure();
       updateKzz();
       onInitialized();
+      updateClouds();
+      applyClouds();
 
       std::cout << "\n  Initialized from " << profile.type << " temperature profile + chemistry.\n";
     }
@@ -285,6 +431,8 @@ class GenericObject {
       calcAtmosphereStructure();
       updateKzz();
       onInitialized();
+      updateClouds();
+      applyClouds();
 
       std::cout << "\n  Initialized from external arrays.\n";
     }
@@ -300,6 +448,7 @@ class GenericObject {
     OpacityCalculation opacity;
 
     std::vector<std::unique_ptr<Chemistry>> chemistry;
+    std::vector<std::unique_ptr<CloudModel>> clouds;
     std::unique_ptr<RadiativeTransfer> radiative_transfer;
     std::unique_ptr<Convection> convection;
     std::unique_ptr<EddyDiffusion> eddy_diffusion;
@@ -309,6 +458,16 @@ class GenericObject {
     double bottom_radius;         // cm; 0 = plane-parallel with constant gravity
     bool use_variable_gravity;
     bool warm_start = false;      // set by compute() for the duration of one call
+    bool clouds_applied = false;  // the opacity's cloud arrays hold a nonzero cloud
+    double last_residual = -1.0;  // the corrector's convergence residual of the previous iteration
+    bool easy_start_done = false; // the corrector's easy-start homotopy is over (set by the loops)
+    bool cloud_ramp_active = false;
+    double cloud_ramp_tau_start = 1.0, cloud_ramp_gate = 1e-2, cloud_ramp_factor = 2.0;
+    double cloud_ramp_backoff = 2.0;        // residual above which the last ramp step is undone
+    double cloud_ramp_step = 2.0;           // current growth factor (halved in log on every back-off)
+    double cloud_ramp_prev_scale = 0.0;     // scale before the pending step
+    bool cloud_ramp_pending = false;        // a ramp step was taken at the last update
+    double cloud_scale = 1.0;     // factor on the cloud optical depths handed to the RT
     size_t stall_count = 0;       // consecutive iterations without any temperature change
 
     // Stagnation exit for the iteration loops. A Newton corrector that proposes NO change at all
@@ -384,11 +543,146 @@ class GenericObject {
           atmosphere.pressure,
           atmosphere.number_densities,
           atmosphere.mean_molecular_weight);
+
+      storeCondensates(chemistry);
+    }
+
+    // the condensed phase of the (last) chemistry module that has one -> atmosphere
+    template <class Modules>
+    void storeCondensates(const Modules& modules)
+    {
+      for (const auto& chem : modules)
+        if (chem->enabled)
+          if (const CondensatePhase* c = chem->condensates()) atmosphere.condensates = *c;
     }
 
     void calcAtmosphereStructure()
     {
       atmosphere.calcAtmosphereStructure(surface_gravity, bottom_radius, use_variable_gravity);
+    }
+
+    // Gas opacities plus the cloud optical properties for the radiative transfer.
+    // update_clouds = true: recompute every cloud module from the committed atmosphere first --
+    // the iteration loops do (once per outer iteration). The Newton trial evaluations do NOT: the
+    // cloud is an operator-split (lagged) quantity there, like Kzz and the composition's
+    // T-dependence in the RT Jacobian, so the corrector only ever sees the committed optics.
+    void calcOpacity(const bool update_clouds = false)
+    {
+      opacity.calculate();
+      if (update_clouds) { updateClouds(); updateCloudScale(); }
+      applyClouds();
+    }
+
+    // The cloud ramp (cloud_ramp = default): the committed cloud optical depths enter the radiative
+    // transfer multiplied by cloud_scale. Zero until the corrector's easy start is over (clouds in
+    // a deep atmosphere that is radiative by construction make that state pathological), then the
+    // largest scale that keeps the total optical depth at 1 micron below tau_start, growing by `factor` on
+    // every outer iteration whose corrector residual is below `gate` -- so the Newton re-converges
+    // between doublings and the greenhouse of a thick deck builds up gradually. A warm start
+    // (compute(warm_start=True)) applies the full cloud at once.
+    void updateCloudScale()
+    {
+      if (!cloud_ramp_active || clouds.empty()) return;
+
+      if (warm_start) { setCloudScale(1.0); return; }
+      if (last_residual < 0.0 || !easy_start_done) { setCloudScale(0.0); return; }   // corrector not settled
+
+      if (cloud_scale <= 0.0)
+      {
+        double tau_full = 0.0;
+        for (const double t : cloudOpticalDepth(1.0)) tau_full += t;
+        cloud_ramp_step = cloud_ramp_factor;
+        cloud_ramp_pending = false;
+        setCloudScale(tau_full > 0.0 ? std::min(1.0, cloud_ramp_tau_start / tau_full) : 1.0);
+        return;
+      }
+
+      // Trust region on the ramp: a step that throws the corrector's residual above `backoff`
+      // has left the Newton's contraction region (measured on the forsterite + iron brown dwarf
+      // with a steeply decaying Kzz: the doubling 0.118 -> 0.237 took the residual from 6.7e-3
+      // to 8.85, theta(lambda) > 1 - lambda/4 for every lambda > 1e-4, and the run froze at
+      // lambda_min for 90 iterations; healthy steps land at 0.1-0.9 and recover in 3-5
+      // iterations; the same case with a growth factor of 1.19 converges). Undo the step and
+      // continue with the square root of the growth factor.
+      if (cloud_ramp_pending)
+      {
+        cloud_ramp_pending = false;
+        if (last_residual > cloud_ramp_backoff)
+        {
+          cloud_ramp_step = std::max(1.02, std::sqrt(cloud_ramp_step));
+          std::cout << "  cloud ramp: residual " << std::scientific << std::setprecision(2) << last_residual
+                    << " above the back-off " << cloud_ramp_backoff << std::defaultfloat
+                    << " -- undoing the last step, growth factor now " << std::setprecision(3)
+                    << cloud_ramp_step << "\n";
+          setCloudScale(cloud_ramp_prev_scale);
+          return;
+        }
+      }
+
+      if (cloud_scale < 1.0 && last_residual < cloud_ramp_gate)
+      {
+        cloud_ramp_prev_scale = cloud_scale;
+        cloud_ramp_pending = true;
+        setCloudScale(std::min(1.0, cloud_ramp_step * cloud_scale));
+      }
+    }
+
+    void setCloudScale(const double scale)
+    {
+      if (scale == cloud_scale) return;
+      cloud_scale = scale;
+      std::cout << "  cloud ramp: scale " << std::defaultfloat << std::setprecision(4) << cloud_scale << "\n";
+      residual_history.clear();   // a changed cloud is a changed problem (see updateClouds)
+      stall_count = 0;
+    }
+
+
+    void updateClouds()
+    {
+      bool changed = false;
+      for (auto& c : clouds)
+        if (c->enabled)
+        {
+          c->setKzz(atmosphere.kzz);
+          c->setResidual(last_residual);
+          c->update(atmosphere);
+          changed = changed || c->structure_changed;
+        }
+
+      // a changed cloud is a changed problem: the stall detector must not compare the residual
+      // against the clear-sky phase (measured: a cloud switching on after a converged clear phase
+      // raised the residual from 8e-4 to 60, and the detector stopped the run while the residual
+      // was still falling by a factor 3 per iteration)
+      if (changed)
+      {
+        residual_history.clear();
+        stall_count = 0;
+      }
+    }
+
+    // sum the committed optics of the enabled cloud modules into the opacity's cloud arrays
+    void applyClouds()
+    {
+      std::vector<const CloudOpticalProperties*> parts;
+      for (const auto& c : clouds)
+        if (c->enabled) parts.push_back(&c->optics());
+
+      if (!parts.empty() || clouds_applied)
+      {
+        combineCloudOptics(
+          parts,
+          opacity.cloud_optical_depths,
+          opacity.cloud_single_scattering,
+          opacity.cloud_asym_param);
+        clouds_applied = !parts.empty();
+
+        if (cloud_scale != 1.0)
+          for (auto& row : opacity.cloud_optical_depths)
+            for (auto& t : row) t *= cloud_scale;
+      }
+
+      // the kappa that weights the local-RE residual: gas + cloud absorption per level
+      opacity.updateTotalAbsorption(atmosphere.altitude);
     }
 
     // Limit the relative temperature change per iteration (relaxation schemes). Skipped when the

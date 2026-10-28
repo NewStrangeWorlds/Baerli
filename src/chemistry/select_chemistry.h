@@ -34,6 +34,13 @@ namespace ngam {
 //                           parameter_file   FastChem parameter file (required)
 //                           metallicity      relative to solar, default 1
 //                           c_to_o           C/O ratio, default 0.5
+//                           condensation     none (default) | equilibrium | rainout: FastChem's
+//                                            condensed phase (needs the condensate data file in the
+//                                            parameter file); the per-level condensate densities go
+//                                            to atmosphere.condensates for the cloud modules, the
+//                                            gas phase is depleted accordingly (fastchem_chemistry.h)
+//                           condensation_acceleration   Aitken acceleration of the lagged depletion
+//                                            between outer iterations, default true
 //   isoprofile (iso)        constant mixing ratios; every key is a species symbol, its value the
 //                           volume mixing ratio, e.g. {H2: 0.85, He: 0.15, H2O: 1e-4}
 //   fixed (fix)             tabulated composition profile
@@ -70,7 +77,15 @@ inline std::unique_ptr<Chemistry> selectChemistryModule(const ModuleSpec& spec)
       const std::string parameter_file = reader.requireString("parameter_file");
       const double metallicity = reader.getDouble("metallicity", 1.0);
       const double c_to_o = reader.getDouble("c_to_o", 0.5);
-      module = std::make_unique<FastChemChemistry>(parameter_file);
+      const std::string cond = reader.getString("condensation", "none");
+      FastChemChemistry::Condensation condensation;
+      if (cond == "none") condensation = FastChemChemistry::Condensation::none;
+      else if (cond == "equilibrium") condensation = FastChemChemistry::Condensation::equilibrium;
+      else if (cond == "rainout") condensation = FastChemChemistry::Condensation::rainout;
+      else throw InvalidInput("chemistry",
+        "equilibrium chemistry: condensation must be none, equilibrium or rainout, got '" + cond + "'\n");
+      module = std::make_unique<FastChemChemistry>(
+        parameter_file, condensation, reader.getBool("condensation_acceleration", true));
       module->parameters = {metallicity, c_to_o};
       break;
     }

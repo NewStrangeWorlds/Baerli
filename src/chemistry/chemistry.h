@@ -25,6 +25,7 @@
 
 
 #include "chem_species.h"
+#include "../atmosphere/atmosphere.h"
 
 
 namespace ngam {
@@ -54,6 +55,11 @@ class Chemistry{
     // quench points, for instance) must then reapply its last committed state instead of
     // re-deriving it from the trial profile. Modules that are cheap and smooth ignore this.
     virtual void setLagged(const bool) {}
+
+    // The condensed phase this module computed alongside the gas (equilibrium chemistry with
+    // condensation), copied onto the atmosphere by the owning object after every evaluation.
+    // nullptr for modules without a condensed phase.
+    virtual const CondensatePhase* condensates() const { return nullptr; }
 
     // A disabled module is skipped by the owning object (its composition passes through). Used for
     // a chemistry continuation: converge with equilibrium first, then switch the quench module on

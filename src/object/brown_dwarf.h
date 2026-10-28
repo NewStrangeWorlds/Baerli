@@ -45,6 +45,19 @@ class BrownDwarf : public GenericObject {
     {}
     virtual ~BrownDwarf() {}
 
+    // Diagnostic: one radiative-transfer solve at the current state (chemistry, structure and
+    // opacity recomputed on the committed path) with or without the temperature Jacobians;
+    // returns the per-level net flux. The mean intensity is left in radiation_field.
+    std::vector<double> evalRadiation(const bool compute_jacobian)
+    {
+      calcChemistry();
+      calcAtmosphereStructure();
+      calcOpacity();
+      radiation_field.compute_jacobian = compute_jacobian;
+      radiative_transfer->calculate(atmosphere, opacity, radiation_field);
+      return radiation_field.flux_total;
+    }
+
     bool computeAtmosphericStructure() override
     {
       // ---- temperature-correction scheme, selected by the solver spec (see
@@ -85,7 +98,7 @@ class BrownDwarf : public GenericObject {
             {
               calcChemistry(/*update_kzz=*/false);
               calcAtmosphereStructure();
-              opacity.calculate();
+              calcOpacity();
             }
             radiation_field.compute_jacobian = compute_jacobian;
             radiative_transfer->calculate(atmosphere, opacity, radiation_field);
@@ -129,7 +142,8 @@ class BrownDwarf : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        easy_start_done = temp_correction->easyStartDone();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Radiative transfer
         radiative_transfer->calculate(atmosphere, opacity, radiation_field);
@@ -182,6 +196,7 @@ class BrownDwarf : public GenericObject {
         // convergence/display metric: the corrector's radiative flux residual (excludes
         // convective + optically-thin-skin layers) when provided, else the TOA flux error.
         const double lin_resid = temp_correction->lastConvergenceResidual();
+        last_residual = (lin_resid >= 0.0) ? lin_resid : max_change;   // for the cloud modules' ramp gate
         const double flux_error = (lin_resid >= 0.0)
           ? lin_resid : (radiation_field.flux_total.back() - target_flux) / target_flux;
 

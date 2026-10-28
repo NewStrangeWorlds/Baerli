@@ -63,6 +63,7 @@ class ClimaRCECorrection : public TemperatureCorrection{
     bool solvesSurfaceTemperature() const override { return true; }
     void setForwardEvalFull(ForwardEvalFull f) override { forward_eval_full_ = std::move(f); }
     double lastConvergenceResidual() const override { return last_residual_; }
+    bool easyStartDone() const override { return !mlt_active_ || mlt_sf_ >= 1.0; }
 
     virtual void calcCorrection(
       const double surface_gravity,
@@ -95,6 +96,7 @@ class ClimaRCECorrection : public TemperatureCorrection{
     // the stellar flux (x ~ 0.1 super-moist-adiabatic on every link), which the damped Newton
     // cannot step through (measured: lambda -> 1e-4, then a 1e66 blow-up).
     double mlt_sf_ = -1.0;              // current flux scale factor (<0 = uninitialised)
+    bool mlt_active_ = false;           // the MLT flux law is part of the system (set per call)
     double mlt_prev_resid_ = -1.0;      // previous call's RAW residual (ramp gate; last_residual_ is floored while ramping)
 
     // CLIMA_PTC unified mode: pseudo-transient continuation state, persisting across calcCorrection

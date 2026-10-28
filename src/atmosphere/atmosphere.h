@@ -32,6 +32,25 @@
 namespace ngam {
 
 
+// The condensed phase of the equilibrium chemistry (FastChem with condensation), per level:
+// densities[level][k] in formula units per cm^3 for condensate symbols[k] (FastChem's symbols, e.g.
+// "MgSiO3(s,l)") with formula weights[k] in g/mol. In rainout mode a level's density is the amount
+// that condenses AT that level from what arrives from below -- the condensation increment the cloud
+// modules need. Empty without condensation.
+struct CondensatePhase {
+  std::vector<std::string> symbols;
+  std::vector<double> weights;
+  std::vector<std::vector<double>> densities;
+
+  bool empty() const { return symbols.empty(); }
+  int index(const std::string& symbol) const
+  {
+    for (size_t k = 0; k < symbols.size(); ++k) if (symbols[k] == symbol) return static_cast<int>(k);
+    return -1;
+  }
+};
+
+
 class Atmosphere {
   public:
     Atmosphere (
@@ -50,6 +69,7 @@ class Atmosphere {
     std::vector< std::vector<double> > number_densities;
     std::vector<int> convective;
     std::vector<double> kzz;          // eddy diffusion coefficient [cm^2/s], set by the object
+    CondensatePhase condensates;      // from the chemistry (empty without condensation)
 
     void calcAtmosphereStructure(
       const double surface_gravity,

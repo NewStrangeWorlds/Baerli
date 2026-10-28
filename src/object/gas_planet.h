@@ -114,7 +114,7 @@ class GasPlanet : public GenericObject {
             {
               calcChemistry(/*update_kzz=*/false);
               calcAtmosphereStructure();
-              opacity.calculate();
+              calcOpacity();
             }
             RadiativeBoundaryConditions bc;
             bc.incident_flux = stellar_flux;
@@ -163,7 +163,8 @@ class GasPlanet : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        easy_start_done = temp_correction->easyStartDone();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Boundary conditions: irradiated top, no surface (semi-infinite bottom)
         RadiativeBoundaryConditions bc;
@@ -226,6 +227,7 @@ class GasPlanet : public GenericObject {
         // (excludes convective + optically-thin-skin layers) when it provides one, else the
         // TOA flux error.
         const double lin_resid = temp_correction->lastConvergenceResidual();
+        last_residual = (lin_resid >= 0.0) ? lin_resid : max_change;   // for the cloud modules' ramp gate
         // fallback metric (relaxation correctors): TOA net-flux error relative to the TRANSPORTED
         // flux mu*S + F_int, not F_int alone (see the flux_scale note above).
         const double flux_error = (lin_resid >= 0.0)

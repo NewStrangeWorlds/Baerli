@@ -71,7 +71,7 @@ class TerrestrialPlanet : public GenericObject {
       {
         calcChemistry();
         calcAtmosphereStructure();
-        opacity.calculate();
+        calcOpacity();
       }
       RadiativeBoundaryConditions bc;
       bc.incident_flux = stellar_flux;
@@ -122,7 +122,7 @@ class TerrestrialPlanet : public GenericObject {
           {
             calcChemistry(/*update_kzz=*/false);
             calcAtmosphereStructure();
-            opacity.calculate();
+            calcOpacity();
           }
           RadiativeBoundaryConditions bc;
           bc.incident_flux = stellar_flux;
@@ -145,7 +145,7 @@ class TerrestrialPlanet : public GenericObject {
           atmosphere.temperature = T;
           calcChemistry(/*update_kzz=*/false);
           calcAtmosphereStructure();
-          opacity.calculate();
+          calcOpacity();
           RadiativeBoundaryConditions bc;
           bc.incident_flux = stellar_flux;
           bc.zenith_angle = zenith_angle;
@@ -194,7 +194,8 @@ class TerrestrialPlanet : public GenericObject {
         calcAtmosphereStructure();
 
         // 3. Opacities
-        opacity.calculate();
+        easy_start_done = temp_correction->easyStartDone();
+        calcOpacity(/*update_clouds=*/true);
 
         // 4. Build boundary conditions
         RadiativeBoundaryConditions bc;
@@ -270,6 +271,7 @@ class TerrestrialPlanet : public GenericObject {
         // the actual convergence metric (max per-level flux imbalance / stellar, gated by |dT/T|): this is
         // what is tested below, so print it -- F_net(TOA) is only the top and floors long before the deep.
         const double lin_resid = temp_correction->lastConvergenceResidual();
+        last_residual = (lin_resid >= 0.0) ? lin_resid : max_change;   // for the cloud modules' ramp gate
 
         std::cout << "  " << std::setw(5) << iter + 1
                   << "  " << std::setw(12) << std::scientific << std::setprecision(4) << max_change

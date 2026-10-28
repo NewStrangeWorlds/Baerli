@@ -80,7 +80,7 @@ void HeliosTemperature::calcCorrection(
       std::vector<double> integrand(nb_spectral);
 
       for (size_t nu = 0; nu < nb_spectral; ++nu)
-        integrand[nu] = opacity.absorption_coeff[nu][i]
+        integrand[nu] = opacity.absorption_coeff_total[nu][i]
           * (radiation_field.mean_intensity[i][nu] - aux::planckFunctionWavenumber(T[i], wn[nu]));
 
       double dz = 0;

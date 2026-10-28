@@ -88,7 +88,7 @@ static double solveLocalREBracket(
   auto emitted = [&](double T) {
     double den = 0.0;
     for (size_t k = 0; k < nb_nu; ++k)
-      den += w[k] * opacity.absorption_coeff[k][level]
+      den += w[k] * opacity.absorption_coeff_total[k][level]
            * disortpp::planckFunction2(wavenumber[k], wavenumber[k], T) * si_to_cgs;
     return den;
   };
@@ -864,6 +864,18 @@ void ClimaRCECorrection::calcCorrection(
   static const double bandcorr_xcut = [] {
     const char* e = std::getenv("CLIMA_BANDCORR_XCUT");
     return (e != nullptr) ? std::atof(e) : 10.0; }();
+  // Weight of a band in the closure as a function of x = h c nu_b / (k T): 1 for x <= xcut - 1,
+  // a smooth (cubic) taper to 0 at x = xcut. The former hard cut made the collocated residual
+  // DISCONTINUOUS in T: a band sitting at the cut flipped in and out of the sums with a 1e-4 K
+  // change, and a damped Newton can pin itself on such a flip (measured, cloudy brown dwarf:
+  // the thin-skin row at 670 K jumped by 1.3e-2 for lambda = 1e-4 along the Newton direction,
+  // every trial rejected, dT = 0 for the rest of the run -- CLIMA_BASECHECK).
+  auto bandWeight = [](const double x) {
+    const double t = (bandcorr_xcut - x);                 // e-folds below the cut
+    if (t <= 0.0) return 0.0;
+    if (t >= 1.0) return 1.0;
+    return t * t * (3.0 - 2.0 * t);
+  };
   const bool bandcorr = (ratio || ptc) && bandcorr_env && !opacity.band_correction.empty();
   const size_t nb_cb = bandcorr ? opacity.band_correction.size() : 0;
   std::vector<int> cb_of_k;
@@ -946,7 +958,7 @@ void ClimaRCECorrection::calcCorrection(
         if (cb_of_k[k] >= 0)
         {
           const int b = cb_of_k[k];
-          const double wk = ratio_w[k] * opacity.absorption_coeff[k][i];
+          const double wk = ratio_w[k] * opacity.absorption_coeff_total[k][i];
           row[b]    += wk * radiation_field.mean_intensity[i][k];
           sum_wk[b] += wk;
           sum_wj[b] += ratio_w[k] * radiation_field.mean_intensity[i][k];
@@ -978,7 +990,7 @@ void ClimaRCECorrection::calcCorrection(
         std::vector<double> sumJ(nb_cb, 0.0);
         for (size_t k = 0; k < ratio_nnu; ++k)
         {
-          const double wk = ratio_w[k] * opacity.absorption_coeff[k][i];
+          const double wk = ratio_w[k] * opacity.absorption_coeff_total[k][i];
           num_s += wk * radiation_field.mean_intensity[i][k];
           den_s += wk * disortpp::planckFunction2(ratio_wn[k], ratio_wn[k], T[i]) * ratio_si_to_cgs;
           if (cb_of_k[k] >= 0) sumJ[cb_of_k[k]] += ratio_w[k] * radiation_field.mean_intensity[i][k];
@@ -990,9 +1002,10 @@ void ClimaRCECorrection::calcCorrection(
                             * (cb_eps.empty() ? 1.0 : cb_eps[i][b]);
           if (dk == 0.0 || cb_sumw[b] <= 0.0) continue;
           const double nu_b = opacity.band_wavenumber[b];
-          if (1.4387769 * nu_b > bandcorr_xcut * std::max(T[i], 1.0)) continue;
-          const double dn = dk * cb_Jbar[i][b];
-          const double dd = dk * disortpp::planckFunction2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
+          const double wb = bandWeight(1.4387769 * nu_b / std::max(T[i], 1.0));
+          if (wb <= 0.0) continue;
+          const double dn = wb * dk * cb_Jbar[i][b];
+          const double dd = wb * dk * disortpp::planckFunction2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
           dnum += dn; dden += dd;
           if (std::abs(dn - dd) > worst) { worst = std::abs(dn - dd); worst_b = b; }
         }
@@ -1010,7 +1023,7 @@ void ClimaRCECorrection::calcCorrection(
         std::vector<double> sumJ(nb_cb, 0.0);
         for (size_t k = 0; k < ratio_nnu; ++k)
         {
-          const double wk = ratio_w[k] * opacity.absorption_coeff[k][i];
+          const double wk = ratio_w[k] * opacity.absorption_coeff_total[k][i];
           num_c += wk * radiation_field.mean_intensity[i][k];
           den_c += wk * disortpp::planckFunction2(ratio_wn[k], ratio_wn[k], T[i]) * ratio_si_to_cgs;
           C_c   += wk * disortpp::planckFunctionDeriv2(ratio_wn[k], ratio_wn[k], T[i]) * ratio_si_to_cgs;
@@ -1023,10 +1036,11 @@ void ClimaRCECorrection::calcCorrection(
                             * (cb_eps.empty() ? 1.0 : cb_eps[i][b]);
           if (dk == 0.0 || cb_sumw[b] <= 0.0) continue;
           const double nu_b = opacity.band_wavenumber[b];
-          if (1.4387769 * nu_b > bandcorr_xcut * std::max(T[i], 1.0)) continue;
-          num_c += dk * cb_Jbar[i][b];
-          den_c += dk * disortpp::planckFunction2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
-          C_c   += dk * disortpp::planckFunctionDeriv2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
+          const double wb = bandWeight(1.4387769 * nu_b / std::max(T[i], 1.0));
+          if (wb <= 0.0) continue;
+          num_c += wb * dk * cb_Jbar[i][b];
+          den_c += wb * dk * disortpp::planckFunction2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
+          C_c   += wb * dk * disortpp::planckFunctionDeriv2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
         }
         const double gre_c = (den_c > 0.0) ? num_c/den_c - 1.0 : -999.0;
         if (den_c <= 0.0 || C_c <= 0.0 || std::abs(gre_c) > 5.0 || den_c < 0.2*den_s || C_c < 0.2*C_s)
@@ -1044,7 +1058,7 @@ void ClimaRCECorrection::calcCorrection(
     num = den = C = 0.0;
     for (size_t k = 0; k < ratio_nnu; ++k)
     {
-      const double wk = ratio_w[k] * opacity.absorption_coeff[k][i];
+      const double wk = ratio_w[k] * opacity.absorption_coeff_total[k][i];   // gas + cloud absorption
       const double wn = ratio_wn[k];
       num += wk * radiation_field.mean_intensity[i][k];
       den += wk * disortpp::planckFunction2(wn, wn, T[i])      * ratio_si_to_cgs;
@@ -1071,10 +1085,11 @@ void ClimaRCECorrection::calcCorrection(
                           * (cb_eps.empty() ? 1.0 : cb_eps[i][b]);   // escape-probability weight (v3)
         if (dk == 0.0 || cb_sumw[b] <= 0.0) continue;
         const double nu_b = opacity.band_wavenumber[b];
-        if (1.4387769 * nu_b > bandcorr_xcut * std::max(T[i], 1.0)) continue;   // thermal bands only (v1)
-        num += dk * cb_Jbar[i][b];                   // FROZEN band-mean J (see snapshotBandJ)
-        den += dk * disortpp::planckFunction2(nu_b, nu_b, T[i])      * ratio_si_to_cgs;
-        C   += dk * disortpp::planckFunctionDeriv2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
+        const double wb = bandWeight(1.4387769 * nu_b / std::max(T[i], 1.0));   // thermal bands only (v1), tapered
+        if (wb <= 0.0) continue;
+        num += wb * dk * cb_Jbar[i][b];              // FROZEN band-mean J (see snapshotBandJ)
+        den += wb * dk * disortpp::planckFunction2(nu_b, nu_b, T[i])      * ratio_si_to_cgs;
+        C   += wb * dk * disortpp::planckFunctionDeriv2(nu_b, nu_b, T[i]) * ratio_si_to_cgs;
       }
   };
 
@@ -1134,7 +1149,7 @@ void ClimaRCECorrection::calcCorrection(
       double sB = 0.0, skB = 0.0;
       for (size_t kk = 0; kk < ratio_nnu; ++kk)
       { const double B = disortpp::planckFunction2(ratio_wn[kk], ratio_wn[kk], atmosphere.temperature[i]);
-        sB += nl_w[kk]*B; skB += nl_w[kk]*opacity.absorption_coeff[kk][i]*B; }
+        sB += nl_w[kk]*B; skB += nl_w[kk]*opacity.absorption_coeff_total[kk][i]*B; }
       kP[i] = (sB > 0.0) ? skB/sB : 0.0;
     }
     for (size_t i = 1; i < n; ++i)
@@ -1194,6 +1209,7 @@ void ClimaRCECorrection::calcCorrection(
   std::vector<double> mlt_C, mlt_nad, mlt_idlnP;
   if (mlt)
   {
+    mlt_active_ = true;
     // easy-start homotopy: scale the flux law by mlt_sf_, doubling once the previous stage settled
     // (raw residual + step size below the stage tolerance). While ramping, last_residual_ is floored
     // (below) so the driver cannot declare convergence on a weakened convection.
@@ -2000,6 +2016,79 @@ void ClimaRCECorrection::calcCorrection(
         // the loop computed and then threw away every outer iteration.
         for (size_t r = 0; r < m; ++r) x[r] = std::max(1.0, x[r] + dx[r]);
         break;
+      }
+
+      // CLIMA_BASECHECK: consistency of the direction solve with the trial evaluation. The trial at
+      // lambda = 0 re-evaluates the residual at the base point through the SAME path the damping
+      // uses (evalG without the Jacobian); for a consistent system it reproduces g and gives
+      // theta(0) = 1. Measured theta(0) = 1.4 on a cloudy brown dwarf (every step rejected), so
+      // print the rows where the two residuals differ most.
+      if (dbg && it == 0 && std::getenv("CLIMA_BASECHECK"))
+      {
+        std::vector<double> g0;
+        bool ok = true;
+        try { evalG(x, /*want_jac=*/false, g0); } catch (const std::exception&) { ok = false; }
+        if (ok && g0.size() == m)
+        {
+          std::vector<double> A0 = J, b0(m);
+          for (size_t r = 0; r < m; ++r) b0[r] = -g0[r];
+          double theta0 = -1.0;
+          if (solveDenseLU(A0, b0, m) && allFinite(b0)) theta0 = scaledNorm(b0, x) / norm_dx;
+          std::vector<size_t> order(m);
+          for (size_t r = 0; r < m; ++r) order[r] = r;
+          std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+            return std::abs(g0[a] - g[a]) > std::abs(g0[b] - g[b]); });
+          double max_diff = 0.0;
+          for (size_t r = 0; r < m; ++r) max_diff = std::max(max_diff, std::abs(g0[r] - g[r]));
+          // theta along the direction for tiny lambda: smooth growth ~ lambda^2 = near-null-mode
+          // amplification of the residual's curvature, a jump = a switch in the residual map
+          std::string small;
+          for (const double lam_s : {1e-8, 1e-6, 1e-5})
+          {
+            std::vector<double> xs(m), gs;
+            for (size_t r = 0; r < m; ++r) xs[r] = std::max(1.0, x[r] + lam_s*dx[r]);
+            double th = -1.0;
+            try { evalG(xs, false, gs);
+                  std::vector<double> As = J, bs(m);
+                  for (size_t r = 0; r < m; ++r) bs[r] = -gs[r];
+                  if (solveDenseLU(As, bs, m) && allFinite(bs)) th = scaledNorm(bs, xs) / norm_dx; }
+            catch (const std::exception&) {}
+            char buf[64]; std::snprintf(buf, sizeof buf, " theta(%.0e)=%.4f", lam_s, th); small += buf;
+          }
+          std::fprintf(stderr, "  [basecheck] theta(0)=%.3e  max|g_trial0 - g_base|=%.3e %s\n",
+                       theta0, max_diff, small.c_str());
+          // the rows that change most for lambda = 1e-4 (where theta jumps), with the MLT link
+          // superadiabaticity x = nabla - nabla_ad at the adjacent links, base vs trial
+          {
+            const double lam_j = 1e-4;
+            std::vector<double> xs(m), gs;
+            for (size_t r = 0; r < m; ++r) xs[r] = std::max(1.0, x[r] + lam_j*dx[r]);
+            try {
+              evalG(xs, false, gs);
+              std::vector<size_t> ord(m);
+              for (size_t r = 0; r < m; ++r) ord[r] = r;
+              std::sort(ord.begin(), ord.end(), [&](size_t a, size_t b) {
+                return std::abs(gs[a] - g[a]) > std::abs(gs[b] - g[b]); });
+              const std::vector<double> Tb = buildProfile(x), Tt = buildProfile(xs);
+              auto xlink = [&](const std::vector<double>& T, size_t li) {
+                return (li + 1 < n && mlt) ? std::log(T[li]/T[li+1]) * mlt_idlnP[li] - mlt_nad[li] : 0.0; };
+              std::fprintf(stderr, "  [basecheck] rows changing most at lambda=1e-4 (lv g_base g_trial dg | x_link(lv-1) x_link(lv) base->trial)\n");
+              for (size_t q = 0; q < std::min<size_t>(6, m); ++q)
+              {
+                const size_t r = ord[q], i = unk[r];
+                std::fprintf(stderr, "  [basecheck]   lv%zu %+.3e %+.3e %+.2e | %+.3e->%+.3e  %+.3e->%+.3e\n",
+                             i, g[r], gs[r], gs[r] - g[r],
+                             i > 0 ? xlink(Tb, i-1) : 0.0, i > 0 ? xlink(Tt, i-1) : 0.0, xlink(Tb, i), xlink(Tt, i));
+              }
+            } catch (const std::exception&) {}
+          }
+          for (size_t q = 0; q < std::min<size_t>(8, m); ++q)
+          {
+            const size_t r = order[q];
+            std::fprintf(stderr, "  [basecheck]   lv%zu  %+.4e  %+.4e  %+.3e\n",
+                         unk[r], g[r], g0[r], g0[r] - g[r]);
+          }
+        }
       }
 
       // NLEQ-ERR damping: accept lambda when theta = ||dxbar||/||dx|| <= 1 - lambda/4, where the SIMPLIFIED
