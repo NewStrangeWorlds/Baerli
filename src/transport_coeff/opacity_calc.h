@@ -81,6 +81,44 @@ class OpacityCalculation {
     std::vector< std::vector<double> > cloud_single_scattering;
     std::vector< std::vector<double> > cloud_asym_param;
 
+    //TOTAL absorption coefficient per level [spectral point][level] = gas + cloud absorption, the
+    //latter from the layer optical depths above (tau_c (1-w_c) / dz, averaged onto the levels).
+    //This is the kappa that weights the local radiative-equilibrium residual kappa (J - B) and its
+    //Jacobian in the temperature correctors and the RT backends: with a cloud, local RE is
+    //(kappa_gas + kappa_cloud)(J - B) = 0, and weighting with the gas alone drives the Newton to a
+    //wrong root (measured: a residual of 1.6 with no admissible step once an Fe deck sat in the
+    //deep atmosphere). Equal to absorption_coeff without clouds. Filled by
+    //GenericObject::applyClouds after calculate().
+    std::vector< std::vector<double> > absorption_coeff_total;
+
+    //absorption_coeff_total from the current gas coefficients and cloud arrays
+    void updateTotalAbsorption(const std::vector<double>& altitude)
+    {
+      const size_t nb_spectral_points = absorption_coeff.size();
+      const size_t nb_levels = atmosphere->nb_grid_points;
+      absorption_coeff_total = absorption_coeff;
+
+      if (cloud_optical_depths.empty()) return;
+
+      #pragma omp parallel for
+      for (size_t nu = 0; nu < nb_spectral_points; ++nu)
+      {
+        const std::vector<double>& tau = cloud_optical_depths[nu];
+        const std::vector<double>& ssa = cloud_single_scattering[nu];
+        for (size_t i = 0; i < nb_levels; ++i)
+        {
+          // (the altitude grid is zero before the first structure calculation, e.g. for a
+          // prescribed cloud applied at construction: skip, the loop recomputes it)
+          double k = 0.0; int count = 0;
+          if (i > 0 && tau[i-1] > 0 && altitude[i] > altitude[i-1])
+          { k += tau[i-1] * (1.0 - ssa[i-1]) / (altitude[i] - altitude[i-1]); ++count; }
+          if (i + 1 < nb_levels && tau[i] > 0 && altitude[i+1] > altitude[i])
+          { k += tau[i] * (1.0 - ssa[i]) / (altitude[i+1] - altitude[i]); ++count; }
+          if (count > 0) absorption_coeff_total[nu][i] += k / count;
+        }
+      }
+    }
+
   private:
     SpectralGrid* spectral_grid;
     Atmosphere* atmosphere;

@@ -55,7 +55,7 @@ def _specs_to_dicts(specs):
     return [spec_to_dict(specs)]
 
 
-_SPEC_KEYS = ("radiative_transfer", "convection", "solver", "stellar_spectrum", "surface", "kzz")
+_SPEC_KEYS = ("radiative_transfer", "convection", "solver", "stellar_spectrum", "surface", "kzz", "cloud_ramp")
 _SPEC_LIST_KEYS = ("chemistry", "clouds")
 
 

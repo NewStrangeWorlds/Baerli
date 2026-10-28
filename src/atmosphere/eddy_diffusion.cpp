@@ -195,24 +195,30 @@ std::vector<double> MltEddyDiffusion::rawProfile(
   // The anchor is the zone's maximum Kzz within ONE PRESSURE DECADE below its top: inside a zone
   // Kzz keeps growing with depth (the scale height does), so the plain maximum would sit at the
   // domain bottom and make the radiative-zone value depend on how deep the grid goes.
+  // The zone detection must look at the CONVECTIVE profile, not at values this loop has already
+  // assigned to radiative levels: testing the mutated array made every radiative level look like
+  // the top of a zone ending just below it, so the power law was applied over ONE level only
+  // (measured: slope 2 gave a profile falling by 0.69 per decade instead of 100 -- effectively
+  // the constant mode) and the anchor drifted with the assigned values.
   constexpr double anchor_decades = 1.0;
+  const std::vector<double> convective_kzz = kzz;
   long zone_top = -1;      // index of the top level of the zone below
   double zone_max = 0.0;   // its anchor Kzz
   for (size_t i = 0; i < n; ++i)
   {
-    if (kzz[i] > 0)
+    if (convective_kzz[i] > 0)
     {
       convective = true;
       continue;
     }
-    if (i > 0 && kzz[i-1] > 0)
+    if (i > 0 && convective_kzz[i-1] > 0)
     {
       // the zone below just ended at level i-1: find its anchor
       zone_top = static_cast<long>(i - 1);
       zone_max = 0.0;
       const double p_limit = atmosphere.pressure[i-1] * std::pow(10.0, anchor_decades);
-      for (long j = zone_top; j >= 0 && kzz[j] > 0 && atmosphere.pressure[j] <= p_limit; --j)
-        zone_max = std::max(zone_max, kzz[j]);
+      for (long j = zone_top; j >= 0 && convective_kzz[j] > 0 && atmosphere.pressure[j] <= p_limit; --j)
+        zone_max = std::max(zone_max, convective_kzz[j]);
     }
     if (zone_top < 0) continue;   // below the deepest zone: handled after the loop
 
@@ -228,7 +234,7 @@ std::vector<double> MltEddyDiffusion::rawProfile(
 
   long deepest = -1;
   for (size_t i = 0; i < n; ++i)
-    if (kzz[i] > 0) { deepest = static_cast<long>(i); break; }
+    if (convective_kzz[i] > 0) { deepest = static_cast<long>(i); break; }
 
   if (deepest > 0)
     for (long i = 0; i < deepest; ++i) kzz[i] = kzz[deepest];

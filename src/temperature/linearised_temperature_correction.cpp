@@ -92,7 +92,7 @@ double solveLocalRE(
     double den = 0.0, dden = 0.0;
     for (size_t k=0; k<nb_nu; ++k)
     {
-      const double wk = w[k] * opacity.absorption_coeff[k][level];
+      const double wk = w[k] * opacity.absorption_coeff_total[k][level];
       const double wn = wavenumber[k];
       den  += wk * disortpp::planckFunction2(wn, wn, T)      * si_to_cgs;
       dden += wk * disortpp::planckFunctionDeriv2(wn, wn, T) * si_to_cgs;
@@ -384,7 +384,7 @@ void LinearisedTemperatureCorrection::calcCorrection(
     else if (1.0 - zeta[i] < 1e-3) continue;
     double num = 0.0;                              // absorbed = sum_nu w kappa_abs J
     for (size_t k=0; k<nb_nu; ++k)
-      num += w[k] * opacity.absorption_coeff[k][i] * radiation_field.mean_intensity[i][k];
+      num += w[k] * opacity.absorption_coeff_total[k][i] * radiation_field.mean_intensity[i][k];
     const double T_local = solveLocalRE(num, w, wavenumber, opacity, i, atmosphere.temperature[i]);
     delta_local[i] = T_local - atmosphere.temperature[i];
   }

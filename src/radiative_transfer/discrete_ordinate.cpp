@@ -300,9 +300,9 @@ void DiscreteOrdinates::calculate(
         const auto& fu_row   = results.flux_up_temperature_jac[l_d];
         const auto& fd_row   = results.flux_down_temperature_jac[l_d];
         const auto& mij_row  = results.mean_intensity_temperature_jac[l_d];
-        // kappa weight at ngam grid point i (same absorption_coeff the corrector uses
+        // kappa weight at ngam grid point i (gas + cloud absorption, the same weight the corrector uses
         // to build num/den), so kappa cancels in the ratio-residual diagonal.
-        const double kappa_i = opacity.absorption_coeff[nu_index][i];
+        const double kappa_i = opacity.absorption_coeff_total[nu_index][i];
 
         for (size_t c=0; c<nb_dof; ++c)
         {

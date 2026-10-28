@@ -193,6 +193,8 @@ void FixedCloud::update(const Atmosphere& atmosphere)
 {
   const size_t nb_spectral_points = spectral_grid->nbSpectralPoints();
 
+  structure_changed = !first_update_done;
+  first_update_done = true;
   committed.assignZero(nb_spectral_points, nb_layers);
 
   if (!hasTable()) return;

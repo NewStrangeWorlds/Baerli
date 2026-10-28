@@ -69,6 +69,13 @@ class TemperatureCorrection{
     // layers (set during the last calcCorrection call).
     virtual double lastConvergenceResidual() const { return -1.0; }
 
+    // False while the corrector is still in its easy-start homotopy (the MLT flux-law ramp): the
+    // deep atmosphere is then radiative by construction and a cloud deck there makes that state
+    // pathological (measured: a tau = 5 deck at 25-60 bar put the bottom level 1000 K above its
+    // neighbour and froze the ramp's residual gate at 9). The object keeps the clouds out of the
+    // radiative transfer until this returns true.
+    virtual bool easyStartDone() const { return true; }
+
     virtual void calcCorrection(
       const double surface_gravity,
       Atmosphere& atmosphere,

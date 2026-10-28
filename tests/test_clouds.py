@@ -35,6 +35,7 @@ def make_model(grid, clouds, nb_grid_points=60, **kwargs):
         opacity_species=[("CIA-H2-H2", "CIA/H2-H2"), ("CIA-H2-He", "CIA/H2-He")],
         chemistry=[("isoprofile", {"H2": 0.85, "He": 0.15})],
         clouds=clouds,
+        cloud_ramp=kwargs.pop("cloud_ramp", "none"),
         **kwargs)
 
 

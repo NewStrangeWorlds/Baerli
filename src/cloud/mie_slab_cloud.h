@@ -55,6 +55,7 @@ class MieSlabCloud : public CloudModel {
     const MieTable& mieTable() const { return *mie_table; }
 
   private:
+    bool first_update_done = false;
     std::string condensate;
     double particle_radius, sigma, top_pressure, bottom_pressure;
     double column_density = 0.0;

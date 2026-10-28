@@ -137,6 +137,8 @@ set(LIB_SRC
   src/cloud/fixed_cloud.cpp
   src/cloud/cloud_optics.cpp
   src/cloud/mie_slab_cloud.cpp
+  src/cloud/fall_velocity.cpp
+  src/cloud/ackerman_marley_cloud.cpp
   src/temperature/guillot_temperature.cpp
   src/temperature/milne_solution_temperature.cpp
   src/temperature/time_stepping_temperature.cpp

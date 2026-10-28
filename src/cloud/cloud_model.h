@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -85,6 +86,27 @@ class CloudModel {
         if (std::abs(wl[k] - wavelength) < std::abs(wl[best] - wavelength)) best = k;
       return committed.optical_depth[best];
     }
+
+    // True for modules that read the chemistry's condensed phase (atmosphere.condensates); the
+    // owning object checks at construction that a chemistry module provides it.
+    virtual bool requiresCondensates() const { return false; }
+
+    // Set by the owning object for the duration of compute(): the current profile is (near) a
+    // converged state, so a module's start-up ramp is skipped.
+    virtual void setWarmStart(const bool) {}
+
+    // The temperature corrector's convergence residual of the previous outer iteration (< 0 =
+    // unknown), handed over before update(); a module gates its start-up ramp on it.
+    virtual void setResidual(const double) {}
+
+    // Per-layer diagnostics (name -> nb_layers values) for the output file, e.g. the condensate
+    // mass mixing ratio, particle radius and column density of a microphysical module.
+    virtual std::map<std::string, std::vector<double>> diagnostics() const { return {}; }
+
+    // Set by update(): the committed structure changed in this update (false when a module held
+    // its previous structure). The owning object restarts its stall detection on a change, since
+    // the problem the corrector solves has changed.
+    bool structure_changed = false;
 
     // A disabled module is skipped by the owning object (no optical properties, no update).
     bool enabled = true;

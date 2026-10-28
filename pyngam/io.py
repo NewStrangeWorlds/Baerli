@@ -123,6 +123,21 @@ def save_model(filename, model, grid=None, attrs=None):
         },
     )
 
+    # condensed phase of the chemistry (FastChem with condensation)
+    symbols = list(atm.condensate_symbols)
+    if symbols:
+        ds["condensate_densities"] = (["grid_point", "condensate"],
+            np.array(atm.condensate_densities),
+            {"units": "cm-3", "long_name": "Condensate densities (formula units; rainout: "
+                                           "the amount condensing at each level)"})
+        ds = ds.assign_coords(condensate_symbol=("condensate", symbols))
+
+    # per-module cloud diagnostics (microphysical modules only)
+    for k, (kind, diag) in enumerate(zip(model.cloud_module_types(), model.cloud_diagnostics())):
+        for name, values in diag.items():
+            ds[f"cloud{k}_{name}"] = (["layer"], np.array(values),
+                {"long_name": f"cloud module {k} ({kind}): {name} per layer"})
+
     # provenance: the full configuration, plus its scalars as flat attributes
     config = {
         "grid": getattr(grid, "config", None),

@@ -41,7 +41,7 @@ void TimeSteppingLRETemperature::calcCorrection(
 
     for (size_t nu = 0; nu < nb_spectral; ++nu)
     {
-      const double kappa = opacity.absorption_coeff[nu][i];
+      const double kappa = opacity.absorption_coeff_total[nu][i];
       kJ_integrand[nu] = kappa * radiation_field.mean_intensity[i][nu];
       kB_integrand[nu] = kappa * aux::planckFunctionWavenumber(T_i, wn[nu]);
     }

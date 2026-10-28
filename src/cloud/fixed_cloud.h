@@ -56,6 +56,7 @@ class FixedCloud : public CloudModel {
     bool hasTable() const { return !table_pressure.empty(); }
 
   private:
+    bool first_update_done = false;
     std::string file_name;
 
     // the table, sorted by decreasing pressure (bottom -> top like the model grid) and increasing
