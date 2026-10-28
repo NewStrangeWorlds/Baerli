@@ -1,12 +1,10 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #ifndef GAS_PLANET_H
 #define GAS_PLANET_H
@@ -26,7 +24,7 @@
 #include "../stellar/select_stellar_spectrum.h"
 
 
-namespace ngam{
+namespace baerli{
 
 // Gas (giant) planet forward model.
 //
@@ -290,6 +288,6 @@ class GasPlanet : public GenericObject {
     std::vector<double> stellar_flux;
 };
 
-} // namespace ngam
+} // namespace baerli
 
 #endif // GAS_PLANET_H

@@ -1,12 +1,10 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #ifndef TERRESTRIAL_PLANET_H
 #define TERRESTRIAL_PLANET_H
@@ -29,7 +27,7 @@
 #include "../surface/select_surface.h"
 
 
-namespace ngam {
+namespace baerli {
 
 // Terrestrial planet: an irradiated atmosphere on top of a solid surface. Plane-parallel with
 // constant gravity; the surface energy balance F_net(surface) = 0 closes the problem (no
@@ -317,6 +315,6 @@ class TerrestrialPlanet : public GenericObject {
 };
 
 
-} // namespace ngam
+} // namespace baerli
 
 #endif // TERRESTRIAL_PLANET_H

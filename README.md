@@ -1,9 +1,9 @@
-# Next Generation Atmosphere Model
+# Bärli
 
 Under development :)
 
-ngam computes radiative-convective equilibrium atmospheres of brown dwarfs, gas planets and
-terrestrial planets. The C++ core is used through the `pyngam` Python package.
+Bärli (ASCII: Baerli) computes radiative-convective equilibrium atmospheres of brown dwarfs, gas planets and
+terrestrial planets. The C++ core is used through the `baerli` Python package.
 
 ## Building
 
@@ -13,8 +13,8 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 ```
 
-This places the compiled core `_pyngam*.so` inside the `pyngam/` package directory, so
-`import pyngam` works from the repository root (or with the repository root on `PYTHONPATH`).
+This places the compiled core `_baerli*.so` inside the `baerli/` package directory, so
+`import baerli` works from the repository root (or with the repository root on `PYTHONPATH`).
 
 ## Configuring a model
 
@@ -25,12 +25,12 @@ with a `"type"` key. Each component accepts only its own parameters and rejects 
 else, so e.g. a relaxation-solver knob can never be passed silently to the Newton solver.
 
 ```python
-import pyngam
+import baerli
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     "/data/opacities/", resolution=1000.0, wavelength_min=0.3, wavelength_max=100.0)
 
-model = pyngam.BrownDwarf(
+model = baerli.BrownDwarf(
     grid,
     effective_temperature=1000.0,      # K
     surface_gravity=10**4.5,           # cm/s^2
@@ -45,17 +45,17 @@ model = pyngam.BrownDwarf(
 
 model.initialize(("milne", dict(kappa_ross=1e-2)))     # or model.initialize_from_file("out.nc")
 model.compute()
-pyngam.save_model("output_brown_dwarf.nc", model)      # stores the full configuration
+baerli.save_model("output_brown_dwarf.nc", model)      # stores the full configuration
 ```
 
 See `run_brown_dwarf.py`, `run_brown_dwarf_clouds.py` (clear vs Ackerman & Marley clouds), `run_gas.py`, `run_earth.py` and `run_venus.py` for complete
-examples, and `help(pyngam.BrownDwarf)` / `pyngam.model_config_doc` for the argument lists.
+examples, and `help(baerli.BrownDwarf)` / `baerli.model_config_doc` for the argument lists.
 
 ### Components
 
 | keyword              | types and parameters |
 |----------------------|----------------------|
-| `clouds` (list)      | `fixed` {file} (prescribed layer optical depth, single-scattering albedo and asymmetry parameter over pressure and wavelength; without `file` the table is handed over with `model.set_cloud_optical_properties(**table)`, e.g. from `pyngam.clouds.slab(optical_depth, top_pressure, bottom_pressure, single_scattering=0, asymmetry=0)`); `mie_slab` {condensate (name from `src/cloud/condensate_data.h`, e.g. MgSiO3, Fe, H2O_ice, or a refractive-index file), particle_radius [µm], sigma=1 (lognormal geometric standard deviation), top_pressure, bottom_pressure [bar], optical_depth + reference_wavelength=1 [µm] or column_density [cm⁻²], mie_resolution=200} (a deck of Mie particles, uniform in ln p; optics from LX-MIE on the shipped refractive indices in `data/refractive_indices/`); `ackerman_marley` {condensate, fsed=1, fsed_mode=const/exp, b=1, eps=1e-2, sigma=2, kzz_min=1e5, mixing_length=scale_height/lapse_ratio, relax=0.5, max_change=0.3, tolerance=0.05, gate=1e-2, seed=1e-2, bulk_density, mie_resolution, mie_radii} (Ackerman & Marley 2001 eddy-sedimentation cloud of one condensate on the rainout condensation of the `equilibrium` chemistry, one module per condensate, Kzz from the model's `kzz`); the optical properties of all listed modules are summed; default: no clouds |
+| `clouds` (list)      | `fixed` {file} (prescribed layer optical depth, single-scattering albedo and asymmetry parameter over pressure and wavelength; without `file` the table is handed over with `model.set_cloud_optical_properties(**table)`, e.g. from `baerli.clouds.slab(optical_depth, top_pressure, bottom_pressure, single_scattering=0, asymmetry=0)`); `mie_slab` {condensate (name from `src/cloud/condensate_data.h`, e.g. MgSiO3, Fe, H2O_ice, or a refractive-index file), particle_radius [µm], sigma=1 (lognormal geometric standard deviation), top_pressure, bottom_pressure [bar], optical_depth + reference_wavelength=1 [µm] or column_density [cm⁻²], mie_resolution=200} (a deck of Mie particles, uniform in ln p; optics from LX-MIE on the shipped refractive indices in `data/refractive_indices/`); `ackerman_marley` {condensate, fsed=1, fsed_mode=const/exp, b=1, eps=1e-2, sigma=2, kzz_min=1e5, mixing_length=scale_height/lapse_ratio, relax=0.5, max_change=0.3, tolerance=0.05, gate=1e-2, seed=1e-2, bulk_density, mie_resolution, mie_radii} (Ackerman & Marley 2001 eddy-sedimentation cloud of one condensate on the rainout condensation of the `equilibrium` chemistry, one module per condensate, Kzz from the model's `kzz`); the optical properties of all listed modules are summed; default: no clouds |
 | `cloud_ramp`         | `default` {tau_start=1, gate=1e-2}: the cloud opacity stays out of the radiative transfer until the corrector's easy start is over, then enters with at most tau_start of optical depth at 1 µm and doubles on every iteration whose residual is below gate; `none`: full cloud from the start |
 | `chemistry` (list)   | `equilibrium` {parameter_file, metallicity=1, c_to_o=0.5, condensation=none/equilibrium/rainout (FastChem's condensed phase; needs the condensate data file in the parameter file, see `fastchem_parameters_condensates.dat`; the per-level condensate densities feed the cloud modules and the gas phase is depleted accordingly)}; `isoprofile` {symbol: mixing ratio, ...}; `fixed` {file}; `manabe_wetherald` {surface_rh=0.77}; `quench` {metallicity=1} (Zahnle & Marley 2014 quenching of CO/CH4/H2O, NH3/N2, HCN, CO2 with the model's `kzz`; list after `equilibrium`); `external` {} (composition handed in via `model.set_composition(species, mixing_ratios)`, e.g. from a kinetics code; list last) |
 | `radiative_transfer` | `disort` {nb_streams=4}; `adding_doubling` {nb_streams=2} |
@@ -71,11 +71,11 @@ with the other schemes.
 
 ### Kinetics coupling (neoVULCAN)
 
-`pyngam.KineticsCoupling(model, chem, workdir=...)` alternates an ngam model whose chemistry list
+`baerli.KineticsCoupling(model, chem, workdir=...)` alternates a Bärli model whose chemistry list
 ends in `("external", {})` with a kinetics code exposing neoVULCAN's `VulcanChemistry` interface.
 neoVULCAN itself is fetched at configure time like the other dependencies (commit pinned in
 CMakeLists.txt; `-DFETCHCONTENT_SOURCE_DIR_NEOVULCAN=<checkout>` uses a local one,
-`-DNGAM_FETCH_NEOVULCAN=OFF` skips it) and loaded with `pyngam.load_vulcan(config_path)`.
+`-DBAERLI_FETCH_NEOVULCAN=OFF` skips it) and loaded with `baerli.load_vulcan(config_path)`.
 Each pass solves the RCE with the composition frozen, hands T, p and Kzz to the kinetics code on
 its own grid, runs it to steady state (warm-started), and commits the returned mixing ratios with
 Aitken relaxation and a dead band. The RCE tolerance tightens by a decade per pass. Use
@@ -95,15 +95,15 @@ The same configuration can be written as a TOML (or YAML / JSON) file whose sect
 the keyword arguments, see `configs/earth.toml`:
 
 ```sh
-python -m pyngam configs/earth.toml
+python -m baerli configs/earth.toml
 ```
 
-or from Python: `model, grid = pyngam.build_model(pyngam.load_config("configs/earth.toml"))`.
+or from Python: `model, grid = baerli.build_model(baerli.load_config("configs/earth.toml"))`.
 
 ## Output and provenance
 
-`pyngam.save_model` writes a NetCDF4 file with the atmosphere, the radiation field and the
+`baerli.save_model` writes a NetCDF4 file with the atmosphere, the radiation field and the
 spectrum, plus the complete grid and model configuration as the JSON attribute `config`
-(scalars are also stored as flat attributes). `pyngam.load_output_config(file)` reads it back
-and `pyngam.build_model(...)` rebuilds the model from it; `model.initialize_from_file(file)`
+(scalars are also stored as flat attributes). `baerli.load_output_config(file)` reads it back
+and `baerli.build_model(...)` rebuilds the model from it; `model.initialize_from_file(file)`
 restarts from the saved profile and composition.

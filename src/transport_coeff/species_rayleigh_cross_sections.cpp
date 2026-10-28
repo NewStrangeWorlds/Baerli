@@ -1,3 +1,10 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #include "species_definition.h"
 #include "opacity_species.h"
@@ -15,7 +22,7 @@
 #include "../spectral_grid/spectral_grid.h"
 
 
-namespace ngam{
+namespace baerli{
 
 
 bool GasH2Rayleigh::calcRayleighCrossSections(std::vector<double>& cross_sections)

@@ -1,7 +1,7 @@
 import numpy as np
 
-import pyngam
-from pyngam import save_model
+import baerli
+from baerli import save_model
 
 
 # --- Model configuration ---
@@ -24,10 +24,10 @@ opacity_species = [
 
 # --- Build the model ---
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     opacity_path, resolution=1000.0, wavelength_min=0.3, wavelength_max=100.0)
 
-model = pyngam.BrownDwarf(
+model = baerli.BrownDwarf(
     grid,
     effective_temperature=1000.0,      # K
     surface_gravity=10**4.5,           # cm/s^2

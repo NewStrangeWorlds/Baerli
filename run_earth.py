@@ -1,7 +1,7 @@
 import numpy as np
 
-import pyngam
-from pyngam import save_model
+import baerli
+from baerli import save_model
 
 
 # --- Model configuration ---
@@ -26,15 +26,15 @@ opacity_species = [
 
 # Composite-Planck covering grid: points where the Planck functions between the coldest and the
 # deepest layer (and the star's) carry energy. Set temperature_max ~ the deepest layer T.
-grid = pyngam.SpectralGrid.covering(
+grid = baerli.SpectralGrid.covering(
     opacity_path, wavelength_min=0.15, wavelength_max=100.0,
     temperature_min=100.0, temperature_max=350.0, nb_temperatures=30,
     nb_points=10000, stellar_temperature=5772.0, nb_points_stellar=10000)
 
-# grid = pyngam.SpectralGrid.constant_resolution(
+# grid = baerli.SpectralGrid.constant_resolution(
 #     opacity_path, resolution=5000.0, wavelength_min=0.15, wavelength_max=100.0)
 
-model = pyngam.TerrestrialPlanet(
+model = baerli.TerrestrialPlanet(
     grid,
     surface_gravity=980.0,             # cm/s^2
     instellation=1361e3 * 0.5,         # erg/cm^2/s (solar constant, 0.5 for a fast rotator)

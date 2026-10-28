@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef _time_stepping_lre_temperature_h
 #define _time_stepping_lre_temperature_h
 
@@ -6,7 +14,7 @@
 #include "time_stepping_temperature.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 class TimeSteppingLRETemperature : public TimeSteppingTemperature{

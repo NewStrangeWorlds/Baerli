@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef STELLAR_SPECTRUM_H
 #define STELLAR_SPECTRUM_H
 
@@ -15,7 +23,7 @@
 #include "../additional/quadrature.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 class StellarSpectrum {
@@ -184,6 +192,6 @@ class TabulatedStar : public StellarSpectrum {
 };
 
 
-} // namespace ngam
+} // namespace baerli
 
 #endif // STELLAR_SPECTRUM_H

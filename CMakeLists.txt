@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(ngam C CXX)
+project(baerli C CXX)
 
 # Options
 option(BUILD_PYTHON_BINDINGS "Build the Python module (the only user interface)" ON)
@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Compiler flags
-# -march=native is required so that ngam and its dependencies (DisORT++, FastChem)
+# -march=native is required so that Baerli and its dependencies (DisORT++, FastChem)
 # agree on SIMD alignment for Eigen types
 add_compile_options(-Wall -pedantic -march=native)
 
@@ -42,7 +42,7 @@ FetchContent_MakeAvailable(disortpp)
 # Optional adding-doubling radiative transfer solver. Fetched after disortpp so
 # that the shared Eigen 3.4 dependency is already populated (both repos declare an
 # identical "eigen" FetchContent target). Manual populate + EXCLUDE_FROM_ALL keeps
-# the upstream example/test executables out of ngam's default build; only the
+# the upstream example/test executables out of Baerli's default build; only the
 # adding_doubling library target is compiled, on demand, as a dependency.
 FetchContent_Declare(
   adding_doubling
@@ -66,21 +66,21 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fastchem)
 
-# neoVULCAN (chemical kinetics, Python/JAX) for the kinetics coupling (pyngam.KineticsCoupling).
+# neoVULCAN (chemical kinetics, Python/JAX) for the kinetics coupling (baerli.KineticsCoupling).
 # Not a CMake project: only fetched and its location compiled into the Python module. Override
 # with -DFETCHCONTENT_SOURCE_DIR_NEOVULCAN=/path/to/neoVULCAN to use a local checkout (as for the
-# other dependencies), or -DNGAM_FETCH_NEOVULCAN=OFF to skip it.
-option(NGAM_FETCH_NEOVULCAN "Fetch neoVULCAN for the kinetics coupling" ON)
-if(NGAM_FETCH_NEOVULCAN)
+# other dependencies), or -DBAERLI_FETCH_NEOVULCAN=OFF to skip it.
+option(BAERLI_FETCH_NEOVULCAN "Fetch neoVULCAN for the kinetics coupling" ON)
+if(BAERLI_FETCH_NEOVULCAN)
   FetchContent_Declare(
     neovulcan
     GIT_REPOSITORY https://github.com/NewStrangeWorlds/neoVULCAN
     GIT_TAG        3bc981b9c725171b6428ec361bba0972ef994760 # master: banded block-matrix solver + coupling API (set_composition, warm restart)
   )
   FetchContent_MakeAvailable(neovulcan)   # no CMakeLists.txt in neoVULCAN: fetch only
-  set(NGAM_NEOVULCAN_DIR "${neovulcan_SOURCE_DIR}")
+  set(BAERLI_NEOVULCAN_DIR "${neovulcan_SOURCE_DIR}")
 else()
-  set(NGAM_NEOVULCAN_DIR "")
+  set(BAERLI_NEOVULCAN_DIR "")
 endif()
 
 # LX-MIE (Kitzmann & Heng 2018): Mie efficiencies for the cloud optics. Only the library target in
@@ -152,22 +152,22 @@ set(LIB_SRC
 )
 
 # Static library
-add_library(ngam_lib STATIC ${LIB_SRC})
-target_link_libraries(ngam_lib PUBLIC fastchem_lib OpenMP::OpenMP_CXX disortpp adding_doubling lxmie_lib)
+add_library(baerli_lib STATIC ${LIB_SRC})
+target_link_libraries(baerli_lib PUBLIC fastchem_lib OpenMP::OpenMP_CXX disortpp adding_doubling lxmie_lib)
 # built-in data (refractive indices for the cloud optics, ...)
-target_compile_definitions(ngam_lib PRIVATE NGAM_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+target_compile_definitions(baerli_lib PRIVATE BAERLI_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 # Eigen (shared FetchContent populated by disortpp) -- for unsupported/Eigen/NonLinearOptimization
 # (MINPACK hybrj port) used by the clima RCE corrector's inner solver.
-target_include_directories(ngam_lib PRIVATE ${eigen_SOURCE_DIR})
-set_target_properties(ngam_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(baerli_lib PRIVATE ${eigen_SOURCE_DIR})
+set_target_properties(baerli_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# Python module: the compiled core `_pyngam` is placed inside the pure-Python package
-# `pyngam/` in the source tree, so `import pyngam` works from the repository root.
+# Python module: the compiled core `_baerli` is placed inside the pure-Python package
+# `baerli/` in the source tree, so `import baerli` works from the repository root.
 if(BUILD_PYTHON_BINDINGS)
-  pybind11_add_module(_pyngam src/python/bindings.cpp)
-  target_link_libraries(_pyngam PRIVATE ngam_lib)
-  target_compile_definitions(_pyngam PRIVATE NGAM_NEOVULCAN_DIR="${NGAM_NEOVULCAN_DIR}")
-  set_target_properties(_pyngam PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/pyngam)
-  install(TARGETS _pyngam LIBRARY DESTINATION pyngam)
+  pybind11_add_module(_baerli src/python/bindings.cpp)
+  target_link_libraries(_baerli PRIVATE baerli_lib)
+  target_compile_definitions(_baerli PRIVATE BAERLI_NEOVULCAN_DIR="${BAERLI_NEOVULCAN_DIR}")
+  set_target_properties(_baerli PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/baerli)
+  install(TARGETS _baerli LIBRARY DESTINATION baerli)
 endif()

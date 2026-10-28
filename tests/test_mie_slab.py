@@ -10,7 +10,7 @@ import os
 import numpy as np
 import pytest
 
-import pyngam
+import baerli
 
 OPACITY_PATH = "/media/data/opacity_data/helios-k/"
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,12 +21,12 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def grid():
-    return pyngam.SpectralGrid.constant_resolution(
+    return baerli.SpectralGrid.constant_resolution(
         OPACITY_PATH, resolution=50.0, wavelength_min=0.5, wavelength_max=30.0)
 
 
 def make_model(grid, clouds, nb_grid_points=60, **kwargs):
-    return pyngam.BrownDwarf(
+    return baerli.BrownDwarf(
         grid,
         effective_temperature=1000.0,
         surface_gravity=10**5,

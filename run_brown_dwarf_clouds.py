@@ -34,7 +34,7 @@ import time
 
 import numpy as np
 
-import pyngam
+import baerli
 
 
 # --- Model configuration ---
@@ -59,12 +59,12 @@ clouds = [
     ("ackerman_marley", dict(condensate="Fe",      fsed=2.0, sigma=2.0)),
 ]
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     opacity_path, resolution=300.0, wavelength_min=0.5, wavelength_max=30.0)
 
 
 def build(cloud_modules):
-    return pyngam.BrownDwarf(
+    return baerli.BrownDwarf(
         grid,
         effective_temperature=1300.0,      # K
         surface_gravity=10**5.0,           # cm/s^2
@@ -85,7 +85,7 @@ def run(cloud_modules, filename):
     start = time.time()
     converged = model.compute()
     print(f"\n  {filename}: converged = {converged} after {time.time() - start:.0f} s")
-    pyngam.save_model(filename, model, grid)
+    baerli.save_model(filename, model, grid)
     return model
 
 
@@ -94,7 +94,7 @@ def run(cloud_modules, filename):
 cloudy_only = "--cloudy-only" in sys.argv
 
 if cloudy_only:
-    clear = pyngam.load_model_data("output_brown_dwarf_clear.nc")
+    clear = baerli.load_model_data("output_brown_dwarf_clear.nc")
     pressure = clear["pressure"].values
     temperature_clear = clear["temperature"].values
     spectrum_clear = clear["spectrum"].values

@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #include "species_definition.h"
 
 #include <algorithm>
@@ -9,7 +17,7 @@
 #include "../additional/physical_const.h"
 
 
-namespace ngam{
+namespace baerli{
 
 
 bool GasH2OCIA::calcContinuumAbsorption(

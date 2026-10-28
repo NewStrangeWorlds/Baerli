@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef _thermodynamic_data_h
 #define _thermodynamic_data_h
 
@@ -7,7 +15,7 @@
 #include "../chemistry/chem_species.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 struct NASACoefficients {

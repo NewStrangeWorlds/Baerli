@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #include "clima_rce_correction.h"
 
 #include <vector>
@@ -24,7 +32,7 @@
 #include "../../_deps/disortpp-src/src/Planck.hpp"
 
 
-namespace ngam {
+namespace baerli {
 
 
 // Dense linear solve A x = b by Gaussian elimination with partial pivoting (A, b overwritten;
@@ -214,7 +222,7 @@ void ClimaRCECorrection::calcCorrection(
     // its own troposphere decouple (a large surface/air temperature jump).
     if (n > 1 && desired[1]) desired[0] = 1;
     // FILL interior gaps in the surface-connected zone before any comparison: the convective adjustment
-    // leaves marginal sub-adiabatic POCKETS inside the troposphere, but ngam's zones are CONTIGUOUS. An
+    // leaves marginal sub-adiabatic POCKETS inside the troposphere, but Baerli's zones are CONTIGUOUS. An
     // unfilled `desired` makes `disagree` permanently large (every interior pocket counts) -> the dead
     // band never engages -> the boundary retreats +-1 forever and mask_changed resets the convergence
     // metric to 1.0 each step (the RCB toggle that blocks convergence). Extend through gaps <= mask_band
@@ -1366,7 +1374,7 @@ void ClimaRCECorrection::calcCorrection(
   // exactly that. Because the Jacobian below is a finite difference of THIS residual, the two are
   // self-consistent (no DISORT-divergence/flux stencil mismatch). Only flux_total is needed. ---------
   // Full Unsoeld-Lucy correction dB_i (level + cumulative flux-error integral), from the measured flux.
-  // tau increases DOWNWARD from TOA; ngam's index increases UPWARD, so integrate from i=n-1 down to 0.
+  // tau increases DOWNWARD from TOA; Baerli's index increases UPWARD, so integrate from i=n-1 down to 0.
   // nl_dtau[k] is the optical thickness of the layer between levels k-1 and k.
   // MLT: the conserved column quantity is F_rad + F_c, so the Lucy level+gradient terms must use the
   // TOTAL flux deviation -- anchoring F_rad alone would re-introduce the seam a convective zone
@@ -1644,13 +1652,13 @@ void ClimaRCECorrection::calcCorrection(
         // Jacobian d(dF/dtau)/dT, so NHJ*dtau[i] is the dominant surrogate of d(F[i]-F[i-1])/dT, matching
         // the residual's scale. Carries the Planck-cooling diagonal -> no checkerboard null mode.
         // LAYER-INDEX OFFSET: the backend's flux divergence at an interface uses the layer ABOVE it (its own
-        // TOA-first ordering), so after ngam's 0=BOA reversal net_heating[k] describes the layer between ngam
+        // TOA-first ordering), so after Baerli's 0=BOA reversal net_heating[k] describes the layer between Baerli
         // levels k and k+1. The residual row here is (F[i]-F[i-1]) -- the layer between i-1 and i -- so the
         // matching heating row is k = i-1 (and nl_dtau[i], the same layer, is already correct). Offset is a
         // knob (CLIMA_HSTEP_OFF, default -1) because a mismatched pairing makes M a poor approximation of J
         // and the trust region stalls (hybrj info=4/5) rather than failing loudly.
         // SIGN: net_heating = 4pi(1-omega)(J-B) is POSITIVE for heating, and energy conservation gives
-        // heating ~ -dF/dz. ngam's index increases UPWARD, so F[i]-F[i-1] ~ -heating[i]*dtau: the Jacobian
+        // heating ~ -dF/dz. Baerli's index increases UPWARD, so F[i]-F[i-1] ~ -heating[i]*dtau: the Jacobian
         // of this residual is -NHJ*dtau/ceff. Using +NHJ flips the step exactly backwards -> M^-1 g is an
         // ASCENT direction at every step length (measured: rejected for lambda from 1 down to 1e-9 with a
         // sane ||s||~3e2), which is precisely how a trust region reports info=4/5 with zero accepted steps.
@@ -1812,7 +1820,7 @@ void ClimaRCECorrection::calcCorrection(
   // modes (the radiative flux is a non-local smoothing integral of T), so opacity-sampling noise in the
   // fluxes is amplified into a checkerboard. The 4th difference is ZERO for any smooth profile (even a
   // steep physical gradient -- unlike the 2nd difference, which fights real curvature) but LARGE for a
-  // sawtooth, so it damps ONLY the checkerboard and leaves the converged physics unchanged. ngam needs
+  // sawtooth, so it damps ONLY the checkerboard and leaves the converged physics unchanged. Baerli needs
   // this where clima leans on smooth band-averaged (k-distribution) fluxes. CLIMA_SMOOTH sets strength.
   // NOTE: default OFF. The 4th-difference penalty cleanly removes the sawtooth in the PURE-RADIATIVE
   // case, but in the radiative-CONVECTIVE case it feeds back through the convective mask detection
@@ -2258,7 +2266,7 @@ void ClimaRCECorrection::calcCorrection(
 
   // ---- DEEP GRADIENT INTEGRATION (doc Sec.6.5/6.6): reconstruct the carved-out deep [0..kdeep], which
   // buildProfile left frozen, by integrating the thermal-flux-rescaled Planck gradient DOWN from the
-  // photosphere anchor at kdeep+1 (a Newton DOF). PURE integration (no Newton/PTC/blend). On ngam's coarse
+  // photosphere anchor at kdeep+1 (a Newton DOF). PURE integration (no Newton/PTC/blend). On Baerli's coarse
   // deep grid the Jacobian off-diagonal vanishes (~e^-dtau), so D is not read from it: the Planck increment is
   // rescaled by the carried-flux ratio F_star/F_th (Eq.28), an O(1) factor stationary at flux conservation
   // (F_tot->0). At a FLAT layer that ratio is 0/0 (measured D undefined) and the old linear-extrapolation

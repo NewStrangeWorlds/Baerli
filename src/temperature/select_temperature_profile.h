@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef _select_temperature_h
 #define _select_temperature_h
 
@@ -15,7 +23,7 @@
 #include "guillot_temperature.h"
 
 
-namespace ngam {
+namespace baerli {
 
 //definition of the different chemistry modules with an
 //identifier, a keyword to be located in the config file and a short version of the keyword

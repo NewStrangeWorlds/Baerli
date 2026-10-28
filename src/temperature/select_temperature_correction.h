@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef _select_temperature_correction_h
 #define _select_temperature_correction_h
 
@@ -17,7 +25,7 @@
 #include "../additional/exceptions.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 // The available temperature-correction schemes ("solver" in the model config), with a config

@@ -1,12 +1,10 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #include "cloud_optics.h"
 #include "condensate_data.h"
@@ -26,18 +24,18 @@
 #include "../additional/physical_const.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
-#ifndef NGAM_DATA_DIR
-#define NGAM_DATA_DIR "data"
+#ifndef BAERLI_DATA_DIR
+#define BAERLI_DATA_DIR "data"
 #endif
 
 
 std::string refractiveIndexFile(const std::string& condensate)
 {
   if (const CondensateData* c = findCondensate(condensate))
-    return std::string(NGAM_DATA_DIR) + "/refractive_indices/" + c->refractive_index_file;
+    return std::string(BAERLI_DATA_DIR) + "/refractive_indices/" + c->refractive_index_file;
 
   return condensate;
 }

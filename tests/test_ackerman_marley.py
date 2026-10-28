@@ -10,7 +10,7 @@ import os
 import numpy as np
 import pytest
 
-import pyngam
+import baerli
 
 OPACITY_PATH = "/media/data/opacity_data/helios-k/"
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def grid():
-    return pyngam.SpectralGrid.constant_resolution(
+    return baerli.SpectralGrid.constant_resolution(
         OPACITY_PATH, resolution=20.0, wavelength_min=0.5, wavelength_max=30.0)
 
 
@@ -31,7 +31,7 @@ def make_model(grid, clouds, condensation="rainout", params=PARAMS, teff=1400.0,
     chem = {"parameter_file": params}
     if condensation:
         chem["condensation"] = condensation
-    return pyngam.BrownDwarf(
+    return baerli.BrownDwarf(
         grid,
         effective_temperature=teff,
         surface_gravity=10**5,
@@ -47,7 +47,7 @@ def make_model(grid, clouds, condensation="rainout", params=PARAMS, teff=1400.0,
 
 
 def species_index(symbol):
-    return list(pyngam.species_symbols()).index(symbol)
+    return list(baerli.species_symbols()).index(symbol)
 
 
 # --- the chemistry side ----------------------------------------------------------------------------
@@ -219,7 +219,7 @@ def test_restart_from_file_keeps_working(grid, tmp_path):
     model = make_model(grid, [("ackerman_marley", dict(condensate="Mg2SiO4"))])
     model.initialize(("milne", dict(kappa_ross=1e-2)))
     out = tmp_path / "state.nc"
-    pyngam.save_model(str(out), model, grid)
+    baerli.save_model(str(out), model, grid)
     restarted = make_model(grid, [("ackerman_marley", dict(condensate="Mg2SiO4"))], max_iterations=1)
     restarted.initialize_from_file(str(out))
     restarted.compute()
@@ -241,8 +241,8 @@ def test_output_file_contains_condensates_and_diagnostics(grid, tmp_path):
     model = make_model(grid, [("ackerman_marley", dict(condensate="Mg2SiO4", relax=1.0, max_change=0))])
     model.initialize(("milne", dict(kappa_ross=1e-2)))
     out = tmp_path / "am.nc"
-    pyngam.save_model(str(out), model, grid)
-    ds = pyngam.load_model_data(str(out))
+    baerli.save_model(str(out), model, grid)
+    ds = baerli.load_model_data(str(out))
     assert "condensate_densities" in ds and "cloud0_column_density" in ds and "cloud0_r_g" in ds
     assert "Mg2SiO4(s,l)" in list(ds["condensate_symbol"].values)
     ds.close()

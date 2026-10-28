@@ -1,12 +1,10 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #include "external_chemistry.h"
 
@@ -18,7 +16,7 @@
 #include "../additional/exceptions.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 ExternalChemistry::ExternalChemistry()
@@ -68,14 +66,14 @@ void ExternalChemistry::setMixingRatios(
 
   if (!ignored_symbols.empty() && !reported_ignored)
   {
-    std::cout << "  ExternalChemistry: ignoring species unknown to ngam:";
+    std::cout << "  ExternalChemistry: ignoring species unknown to Baerli:";
     for (const auto& s : ignored_symbols) std::cout << " " << s;
     std::cout << "\n";
     reported_ignored = true;
   }
 
   if (profiles.empty())
-    throw InvalidInput("ExternalChemistry", "none of the supplied species is known to ngam\n");
+    throw InvalidInput("ExternalChemistry", "none of the supplied species is known to Baerli\n");
 }
 
 

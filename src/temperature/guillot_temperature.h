@@ -1,3 +1,11 @@
+/*
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
+
 #ifndef _guillot_temperature_h
 #define _guillot_temperature_h
 
@@ -9,7 +17,7 @@
 #include "../atmosphere/atmosphere.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 // Guillot (2010) irradiated-analytic temperature profile (ported from BeAR's

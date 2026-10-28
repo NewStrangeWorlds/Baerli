@@ -11,7 +11,7 @@ import os
 import numpy as np
 import pytest
 
-import pyngam
+import baerli
 
 OPACITY_PATH = "/media/data/opacity_data/helios-k/"
 
@@ -21,12 +21,12 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def grid():
-    return pyngam.SpectralGrid.constant_resolution(
+    return baerli.SpectralGrid.constant_resolution(
         OPACITY_PATH, resolution=20.0, wavelength_min=0.5, wavelength_max=30.0)
 
 
 def make_model(grid, clouds, nb_grid_points=60, **kwargs):
-    return pyngam.BrownDwarf(
+    return baerli.BrownDwarf(
         grid,
         effective_temperature=1000.0,
         surface_gravity=10**5,
@@ -54,7 +54,7 @@ def layer_midpoints(model):
 @pytest.mark.parametrize("nb_grid_points", [60, 121])
 def test_slab_is_conservative_and_uniform_in_lnp(grid, nb_grid_points):
     model = make_model(grid, [("fixed", {})], nb_grid_points=nb_grid_points)
-    table = pyngam.clouds.slab(2.0, top_pressure=0.01, bottom_pressure=1.0,
+    table = baerli.clouds.slab(2.0, top_pressure=0.01, bottom_pressure=1.0,
                                single_scattering=0.3, asymmetry=0.6)
     model.set_cloud_optical_properties(**table)
 
@@ -104,7 +104,7 @@ def test_multi_level_table_is_conservative(grid):
 
 def test_wavelength_interpolation(grid):
     model = make_model(grid, [("fixed", {})])
-    table = pyngam.clouds.slab([1.0, 3.0], top_pressure=0.01, bottom_pressure=1.0,
+    table = baerli.clouds.slab([1.0, 3.0], top_pressure=0.01, bottom_pressure=1.0,
                                wavelength=[1.0, 10.0])
     model.set_cloud_optical_properties(**table)
 
@@ -117,10 +117,10 @@ def test_wavelength_interpolation(grid):
 
 
 def test_file_round_trip(grid, tmp_path):
-    table = pyngam.clouds.slab(1.5, top_pressure=0.05, bottom_pressure=0.5,
+    table = baerli.clouds.slab(1.5, top_pressure=0.05, bottom_pressure=0.5,
                                single_scattering=0.9, asymmetry=0.7)
     path = tmp_path / "deck.dat"
-    pyngam.clouds.write_table(path, table, comment="test deck")
+    baerli.clouds.write_table(path, table, comment="test deck")
 
     from_file = make_model(grid, [("fixed", {"file": str(path)})])
     from_file.initialize(("const", {"temperature": 1000.0}))
@@ -140,13 +140,13 @@ def test_file_round_trip(grid, tmp_path):
 
 def test_two_modules_combine_with_scattering_weights(grid, tmp_path):
     """An absorbing and a scattering deck of equal optical depth: w = 1/2, g = the scatterer's."""
-    absorber = pyngam.clouds.slab(1.0, top_pressure=0.01, bottom_pressure=1.0,
+    absorber = baerli.clouds.slab(1.0, top_pressure=0.01, bottom_pressure=1.0,
                                   single_scattering=0.0, asymmetry=0.0)
     path = tmp_path / "absorber.dat"
-    pyngam.clouds.write_table(path, absorber)
+    baerli.clouds.write_table(path, absorber)
 
     model = make_model(grid, [("fixed", {"file": str(path)}), ("fixed", {})])
-    scatterer = pyngam.clouds.slab(1.0, top_pressure=0.01, bottom_pressure=1.0,
+    scatterer = baerli.clouds.slab(1.0, top_pressure=0.01, bottom_pressure=1.0,
                                    single_scattering=1.0, asymmetry=0.8)
     model.set_cloud_optical_properties(**scatterer)
     model.initialize(("const", {"temperature": 1000.0}))
@@ -178,12 +178,12 @@ def test_unknown_type_is_rejected(grid):
 def test_setter_needs_a_fixed_module(grid):
     model = make_model(grid, None)
     with pytest.raises(Exception, match="fixed"):
-        model.set_cloud_optical_properties(**pyngam.clouds.slab(1.0, 0.01, 1.0))
+        model.set_cloud_optical_properties(**baerli.clouds.slab(1.0, 0.01, 1.0))
 
 
 def test_bad_table_is_rejected(grid):
     model = make_model(grid, [("fixed", {})])
-    table = pyngam.clouds.slab(1.0, 0.01, 1.0)
+    table = baerli.clouds.slab(1.0, 0.01, 1.0)
     table["single_scattering"] = [[1.5], [1.5]]
     with pytest.raises(Exception, match="single-scattering"):
         model.set_cloud_optical_properties(**table)
@@ -216,7 +216,7 @@ def test_cloud_changes_the_solution_and_is_saved(grid, tmp_path):
     kwargs = dict(solver=("ratio_ul", dict(max_iterations=3, convergence_threshold=1e-5)))
     clear = make_model(grid, None, **kwargs)
     cloudy = make_model(grid, [("fixed", {})], **kwargs)
-    cloudy.set_cloud_optical_properties(**pyngam.clouds.slab(
+    cloudy.set_cloud_optical_properties(**baerli.clouds.slab(
         5.0, top_pressure=0.1, bottom_pressure=1.0, single_scattering=0.5, asymmetry=0.7))
     for m in (clear, cloudy):
         m.initialize(("milne", dict(kappa_ross=1e-2)))
@@ -225,11 +225,11 @@ def test_cloud_changes_the_solution_and_is_saved(grid, tmp_path):
     assert not np.array_equal(clear.atmosphere.temperature, cloudy.atmosphere.temperature)
 
     out = tmp_path / "cloudy.nc"
-    pyngam.save_model(str(out), cloudy, grid)
-    ds = pyngam.load_model_data(str(out))
+    baerli.save_model(str(out), cloudy, grid)
+    ds = baerli.load_model_data(str(out))
     tau = ds["cloud_optical_depth"].values
     ds.close()
     assert tau.shape == (cloudy.atmosphere.nb_grid_points - 1,)
     assert tau.sum() == pytest.approx(5.0, rel=1e-10)
-    config = pyngam.load_output_config(str(out))
+    config = baerli.load_output_config(str(out))
     assert config["model"]["clouds"] == [{"type": "fixed"}]

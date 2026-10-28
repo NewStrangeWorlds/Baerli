@@ -1,10 +1,10 @@
-"""Alternating coupling of an ngam model with a chemical kinetics code (neoVULCAN).
+"""Alternating coupling of a Baerli model with a chemical kinetics code (neoVULCAN).
 
-Both codes solve a steady state: ngam the radiative-convective equilibrium for a frozen
+Both codes solve a steady state: Baerli the radiative-convective equilibrium for a frozen
 composition, the kinetics code the chemical steady state for a frozen atmosphere. The driver
 alternates them (Gauss-Seidel) with the kinetics code on its own pressure grid:
 
-    ngam.compute(tol)  ->  T(p), Kzz(p)  ->  kinetics to steady state  ->  mixing ratios
+    Baerli.compute(tol)  ->  T(p), Kzz(p)  ->  kinetics to steady state  ->  mixing ratios
          ^                                                                      |
          +-------- external chemistry module  <--  Aitken relaxation + dead band  <-+
 
@@ -51,11 +51,11 @@ def interpolate_log(p_from, values, p_to, log_values=False):
 
 
 class KineticsCoupling:
-    """Drive ngam and a kinetics code to a common steady state.
+    """Drive Baerli and a kinetics code to a common steady state.
 
     Parameters
     ----------
-    model : pyngam model
+    model : baerli model
         Initialised with a chemistry list ending in ``("external", {})``, normally
         ``[equilibrium, quench, external]`` so the quench approximation seeds the kinetics.
     chem : kinetics code instance (see the module docstring), already initialised.
@@ -97,8 +97,8 @@ class KineticsCoupling:
         32 iterations. No effect without a quench module.
     workdir : str, optional
         Directory to switch to around every call into the kinetics code. neoVULCAN reads its
-        thermodynamic data relative to its base directory on every rate update, while ngam's
-        FastChem parameter file lists paths relative to the ngam directory, so the two cannot
+        thermodynamic data relative to its base directory on every rate update, while Baerli's
+        FastChem parameter file lists paths relative to the Baerli directory, so the two cannot
         share a working directory.
     verbose : bool
     """
@@ -110,8 +110,8 @@ class KineticsCoupling:
         self.chem = chem
         self.workdir = workdir
         self.seed_continuation = seed_continuation
-        ngam_species = set(species_symbols())
-        self.species = [s for s in (species or chem.species) if s in ngam_species and s in chem.species]
+        baerli_species = set(species_symbols())
+        self.species = [s for s in (species or chem.species) if s in baerli_species and s in chem.species]
         if not self.species:
             raise ValueError("no species in common between the model and the kinetics code")
 
@@ -131,7 +131,7 @@ class KineticsCoupling:
         self.verbose = verbose
         self.history = []
 
-        # Aitken state (on ln mixing ratios, ngam grid)
+        # Aitken state (on ln mixing ratios, Baerli grid)
         self._weight = relax
         self._residual_prev = None
 
@@ -210,7 +210,7 @@ class KineticsCoupling:
         t0 = time.time()
         staged = self.seed_continuation and self.model.set_chemistry_enabled("quench", False) > 0
         if staged:
-            log(f"pass 0a: ngam with equilibrium chemistry (quench disabled), tolerance {tol:.1e}")
+            log(f"pass 0a: Baerli with equilibrium chemistry (quench disabled), tolerance {tol:.1e}")
             self.model.compute(tolerance=tol, warm_start=False)
             self.model.set_chemistry_enabled("quench", True)
             log(f"        done in {time.time()-t0:.0f} s; pass 0b: quench enabled, re-solve")
@@ -220,11 +220,11 @@ class KineticsCoupling:
             # (measured on the brown dwarf: warm_start=True stalled pass 0b at a residual of 18)
             self.model.compute(tolerance=tol, warm_start=False)
         else:
-            log(f"pass 0: ngam with the seed composition, tolerance {tol:.1e}")
+            log(f"pass 0: Baerli with the seed composition, tolerance {tol:.1e}")
             self.model.compute(tolerance=tol, warm_start=False)
-        log(f"        ngam done in {time.time()-t0:.0f} s")
+        log(f"        Baerli done in {time.time()-t0:.0f} s")
 
-        # seed the kinetics with ngam's composition (equilibrium / quench), on its own grid
+        # seed the kinetics with Baerli's composition (equilibrium / quench), on its own grid
         p_v, T_v, kzz_v = self._atmosphere_to_kinetics()
         with self._in_workdir():
             self.chem.set_atmosphere(T=T_v, P=p_v * 1e6, Kzz=kzz_v)
@@ -253,7 +253,7 @@ class KineticsCoupling:
             tol = max(tol / 10.0, tol_final)
             t0 = time.time()
             rce_ok = self.model.compute(tolerance=tol, warm_start=True)
-            log(f"        ngam tolerance {tol:.1e}: {'converged' if rce_ok else 'NOT converged'} in {time.time()-t0:.0f} s")
+            log(f"        Baerli tolerance {tol:.1e}: {'converged' if rce_ok else 'NOT converged'} in {time.time()-t0:.0f} s")
 
             self.history.append(dict(pass_=k, change_dex=change, committed=committed, weight=weight,
                                      rce_tolerance=tol, rce_converged=rce_ok, kinetics=info))

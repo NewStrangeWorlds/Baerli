@@ -1,4 +1,4 @@
-"""Run a model from a config file:  python -m pyngam config.toml [-o output.nc]"""
+"""Run a model from a config file:  python -m baerli config.toml [-o output.nc]"""
 
 import argparse
 
@@ -7,8 +7,8 @@ from .config import load_config, run
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="python -m pyngam",
-        description="Run an ngam model from a TOML / YAML / JSON config file.")
+        prog="python -m baerli",
+        description="Run a Baerli model from a TOML / YAML / JSON config file.")
     parser.add_argument("config", help="config file")
     parser.add_argument("-o", "--output", help="output file (overrides [output].file)")
     args = parser.parse_args()

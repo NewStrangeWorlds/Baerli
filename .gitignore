@@ -1,6 +1,6 @@
 #the compiled python core
-pyngam/_pyngam*.so
-pyngam/__pycache__/*
+baerli/_baerli*.so
+baerli/__pycache__/*
 
 tests/__pycache__/*
 

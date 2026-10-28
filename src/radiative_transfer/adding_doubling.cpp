@@ -1,22 +1,10 @@
 /*
-* This file is part of the BeAR code (https://github.com/newstrangeworlds/BeAR).
-* Copyright (C) 2024 Daniel Kitzmann
-*
-* BeAR is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* BeAR is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You find a copy of the GNU General Public License in the main
-* BeAR directory under <LICENSE>. If not, see
-* <http://www.gnu.org/licenses/>.
-*/
-
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #include <string>
 #include <iostream>
@@ -35,7 +23,7 @@
 #include "../spectral_grid/spectral_grid.h"
 #include "../additional/exceptions.h"
 
-namespace ngam{
+namespace baerli{
 
 
 AddingDoubling::AddingDoubling(
@@ -309,7 +297,7 @@ void AddingDoubling::calculate(
     {
       // adrt temperature DOF columns: 0..nb_layers are levels (top->bottom),
       // column nb_layers+1 (= nb_grid_points) is the surface temperature, which
-      // equals atmosphere.temperature[0], so it folds onto ngam j = 0.
+      // equals atmosphere.temperature[0], so it folds onto Baerli j = 0.
       const size_t nb_dof = nb_grid_points + 1;
       auto& nh = jac_net_heating_thread[thread_id];
       auto& nf = jac_net_flux_thread[thread_id];
@@ -322,7 +310,7 @@ void AddingDoubling::calculate(
         const auto& fu_row   = results.flux_up_temperature_jac[l_d];
         const auto& fd_row   = results.flux_down_temperature_jac[l_d];
         const auto& mij_row  = results.mean_intensity_temperature_jac[l_d];
-        // kappa weight at ngam grid point i (gas + cloud absorption, the same weight the corrector uses
+        // kappa weight at Baerli grid point i (gas + cloud absorption, the same weight the corrector uses
         // to build num/den), so kappa cancels in the ratio-residual diagonal.
         const double kappa_i = opacity.absorption_coeff_total[nu_index][i];
 

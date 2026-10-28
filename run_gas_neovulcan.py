@@ -3,8 +3,8 @@ import numpy as np
 import os
 import sys
 
-import pyngam
-from pyngam import save_model, mixing_ratios, KineticsCoupling, load_vulcan
+import baerli
+from baerli import save_model, mixing_ratios, KineticsCoupling, load_vulcan
 
 
 # --- Model configuration ---
@@ -40,10 +40,10 @@ opacity_species = [
 
 # --- Build the model ---
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     opacity_path, resolution=10000.0, wavelength_min=0.3, wavelength_max=100.0)
 
-model = pyngam.GasPlanet(
+model = baerli.GasPlanet(
     grid,
     internal_temperature=100.0,        # K -> internal heat flux = sigma * T_int^4
     surface_gravity=2500.0,            # cm/s^2 (~ warm Jupiter)
@@ -84,7 +84,7 @@ model.initialize(("guillot", dict(kappa_ir=1e-2, t_irr=1446.0, gamma=0.4, f=0.25
 
 # --- Build the kinetics code ---
 #
-# neoVULCAN reads its thermodynamic data relative to its base directory, ngam's FastChem
+# neoVULCAN reads its thermodynamic data relative to its base directory, Baerli's FastChem
 # parameter file relative to this directory, so the kinetics code is initialised (and later
 # driven) from its own directory. load_vulcan takes care of the former, workdir= of the latter.
 
@@ -138,6 +138,6 @@ for p_bar in (10.0, 1.0, 1e-2, 1e-4, 1e-6):
     print(f"{pressure[i]:10.2e} " + " ".join(f"{table[i, k]:9.2e}" for k in range(len(symbols))))
 
 
-# --- Save (the full ngam configuration is stored in the file) ---
+# --- Save (the full Baerli configuration is stored in the file) ---
 
 save_model("output_gas_neovulcan.nc", model)

@@ -1,7 +1,7 @@
 import numpy as np
 
-import pyngam
-from pyngam import save_model
+import baerli
+from baerli import save_model
 
 
 # --- Model configuration ---
@@ -29,10 +29,10 @@ opacity_species = [
 
 # --- Build the model ---
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     opacity_path, resolution=10000.0, wavelength_min=0.3, wavelength_max=100.0)
 
-model = pyngam.GasPlanet(
+model = baerli.GasPlanet(
     grid,
     internal_temperature=100.0,        # K -> internal heat flux = sigma * T_int^4
     surface_gravity=2500.0,            # cm/s^2 (~ warm Jupiter)

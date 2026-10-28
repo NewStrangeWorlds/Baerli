@@ -1,22 +1,22 @@
-"""pyngam -- the Python interface of the ngam atmosphere model.
+"""baerli -- the Python interface of the Baerli atmosphere model.
 
-The compiled core (``pyngam._pyngam``) provides the spectral grid and the three object classes
+The compiled core (``baerli._baerli``) provides the spectral grid and the three object classes
 (BrownDwarf, GasPlanet, TerrestrialPlanet). This package wraps them so that
 
 * every grid and model remembers the configuration it was built from (``grid.config``,
-  ``model.config``), which :func:`pyngam.save_model` writes into the output file, and
-* the same configuration can come from a file (:func:`pyngam.load_config`,
-  :func:`pyngam.build_model`, ``python -m pyngam config.toml``).
+  ``model.config``), which :func:`baerli.save_model` writes into the output file, and
+* the same configuration can come from a file (:func:`baerli.load_config`,
+  :func:`baerli.build_model`, ``python -m baerli config.toml``).
 
 Models are configured with keyword arguments. Pluggable components (chemistry, clouds, radiative
 transfer, convection, solver, stellar spectrum, surface, initial profile) are *module specs*:
 a type name, a ``(type, {parameters})`` tuple, or a dict with a ``"type"`` key. Parameters that
 a module does not accept are rejected, so a knob belonging to one scheme can never be passed
-silently to another. See ``pyngam.model_config_doc`` and the class docstrings for the lists.
+silently to another. See ``baerli.model_config_doc`` and the class docstrings for the lists.
 """
 
-from . import _pyngam
-from ._pyngam import species_symbols, Atmosphere, RadiativeTransferOutput, model_config_doc
+from . import _baerli
+from ._baerli import species_symbols, Atmosphere, RadiativeTransferOutput, model_config_doc
 from .io import save_model, load_model_data, load_init_arrays, load_temperature, load_output_config
 from .config import load_config, build_model, run
 from . import clouds
@@ -86,7 +86,7 @@ def _model_kwargs_to_config(kwargs):
 
 # --- spectral grid -----------------------------------------------------------------------------
 
-class SpectralGrid(_pyngam.SpectralGrid):
+class SpectralGrid(_baerli.SpectralGrid):
     """The spectral grid: a subset of the native wavenumber list of the opacity data.
 
     Build one with a factory (all wavelengths in micron):
@@ -184,7 +184,7 @@ def mixing_ratios(model, species=None):
 
     Returns ``(symbols, table)`` with ``table[level][k]`` for ``symbols[k]`` on the model's
     pressure grid (index 0 = bottom). ``species``: symbols to return (default: every species
-    ngam knows). The table has the layout :meth:`set_composition` expects.
+    Baerli knows). The table has the layout :meth:`set_composition` expects.
     """
     import numpy as np
     symbols = list(species_symbols())
@@ -199,9 +199,9 @@ def neovulcan_dir():
     """Directory of the neoVULCAN checkout fetched by the build (CMakeLists.txt pins the commit;
     override with ``-DFETCHCONTENT_SOURCE_DIR_NEOVULCAN=<local checkout>``). Raises if the build
     was configured without it."""
-    path = getattr(_pyngam, "neovulcan_dir", "")
+    path = getattr(_baerli, "neovulcan_dir", "")
     if not path:
-        raise RuntimeError("this build was configured without neoVULCAN (NGAM_FETCH_NEOVULCAN=OFF)")
+        raise RuntimeError("this build was configured without neoVULCAN (BAERLI_FETCH_NEOVULCAN=OFF)")
     return path
 
 
@@ -255,7 +255,7 @@ def _wrap_model(kind, base):
             return self
 
         def initialize_from_file(self, filename):
-            """Restart from a model output file written by :func:`pyngam.save_model`."""
+            """Restart from a model output file written by :func:`baerli.save_model`."""
             arrays = load_init_arrays(filename)
             base.initialize_from_arrays(self, **arrays)
             self.config["initial_profile"] = {"type": "file", "file": str(filename)}
@@ -269,9 +269,9 @@ def _wrap_model(kind, base):
     return Model
 
 
-BrownDwarf = _wrap_model("BrownDwarf", _pyngam.BrownDwarf)
-GasPlanet = _wrap_model("GasPlanet", _pyngam.GasPlanet)
-TerrestrialPlanet = _wrap_model("TerrestrialPlanet", _pyngam.TerrestrialPlanet)
+BrownDwarf = _wrap_model("BrownDwarf", _baerli.BrownDwarf)
+GasPlanet = _wrap_model("GasPlanet", _baerli.GasPlanet)
+TerrestrialPlanet = _wrap_model("TerrestrialPlanet", _baerli.TerrestrialPlanet)
 
 MODEL_CLASSES = {
     "BrownDwarf": BrownDwarf, "brown_dwarf": BrownDwarf,

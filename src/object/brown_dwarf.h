@@ -1,12 +1,10 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #ifndef BROWN_DWARF_H
 #define BROWN_DWARF_H
@@ -23,7 +21,7 @@
 #include "../additional/ng_accelerator.h"
 
 
-namespace ngam{
+namespace baerli{
 
 // Brown dwarf: a self-luminous, semi-infinite atmosphere. No irradiation, no surface; the
 // internal flux sigma T_eff^4 escapes through the diffusion lower boundary and anchors the
@@ -252,6 +250,6 @@ class BrownDwarf : public GenericObject {
     double target_flux;
 };
 
-} // namespace ngam
+} // namespace baerli
 
 #endif // BROWN_DWARF_H

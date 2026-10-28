@@ -1,14 +1,12 @@
 /*
-* This file is part of the ngam code.
-* Copyright (C) 2026 Daniel Kitzmann
-*
-* ngam is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*/
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
-// The compiled core of the `pyngam` package. The pure-Python layer (pyngam/__init__.py) wraps
+// The compiled core of the `baerli` package. The pure-Python layer (baerli/__init__.py) wraps
 // these classes to record the configuration for provenance and to add file-based helpers; the
 // constructor and initialize() signatures here ARE the model configuration schema.
 
@@ -31,7 +29,7 @@
 #include "../object/gas_planet.h"
 
 namespace py = pybind11;
-using namespace ngam;
+using namespace baerli;
 
 
 // ---- module specs from Python objects -------------------------------------------------------
@@ -166,7 +164,7 @@ static ModelConfig makeModelConfig(
 }
 
 // the shared keyword arguments, in the order they appear in every constructor
-#define NGAM_MODEL_CONFIG_ARGS \
+#define BAERLI_MODEL_CONFIG_ARGS \
   py::arg("nb_grid_points") = 100, \
   py::arg("boundary_pressures") = std::vector<double>{1e2, 1e-6}, \
   py::arg("opacity_path") = "", \
@@ -379,7 +377,7 @@ static void defineObjectMethods(py::class_<Object>& cls)
       "optical_depth / single_scattering / asymmetry [np][nw]; the row at pressure p_k holds the\n"
       "optical depth of the input layer between p_k and the next level towards lower pressure.\n"
       "Mapped conservatively (cumulative optical depth in ln p) onto the model layers; see\n"
-      "pyngam.clouds.slab for a grey slab.")
+      "baerli.clouds.slab for a grey slab.")
     .def("cloud_optical_depth", &Object::cloudOpticalDepth, py::arg("wavelength") = 1.0,
       "Summed cloud optical depth per layer (nb_grid_points-1 values, 0 = bottom) at the spectral\n"
       "point closest to `wavelength` [micron].")
@@ -410,20 +408,20 @@ static void defineObjectMethods(py::class_<Object>& cls)
 }
 
 
-PYBIND11_MODULE(_pyngam, m) {
-    m.doc() = "ngam compiled core -- use the pyngam package";
+PYBIND11_MODULE(_baerli, m) {
+    m.doc() = "Baerli compiled core -- use the baerli package";
 
     m.def("species_symbols", &get_species_symbols,
         "Return the list of all chemical species symbols (indexed by species ID)");
 
-#ifndef NGAM_NEOVULCAN_DIR
-#define NGAM_NEOVULCAN_DIR ""
+#ifndef BAERLI_NEOVULCAN_DIR
+#define BAERLI_NEOVULCAN_DIR ""
 #endif
     // directory of the neoVULCAN checkout fetched at configure time ("" if not fetched)
-    m.attr("neovulcan_dir") = NGAM_NEOVULCAN_DIR;
+    m.attr("neovulcan_dir") = BAERLI_NEOVULCAN_DIR;
 
     // ---- SpectralGrid ----
-    // Raw constructors; the pyngam.SpectralGrid factories (constant_resolution, covering, ...)
+    // Raw constructors; the baerli.SpectralGrid factories (constant_resolution, covering, ...)
     // are the intended interface.
     py::class_<SpectralGrid>(m, "SpectralGrid", py::dynamic_attr())
         .def(py::init<
@@ -525,7 +523,7 @@ PYBIND11_MODULE(_pyngam, m) {
         py::arg("surface_gravity"),
         py::arg("radius") = 0.0,
         py::arg("variable_gravity") = false,
-        NGAM_MODEL_CONFIG_ARGS,
+        BAERLI_MODEL_CONFIG_ARGS,
         py::keep_alive<1, 2>(),
         "Self-luminous brown dwarf.\n"
         "  effective_temperature  K; sets the internal flux sigma T_eff^4\n"
@@ -549,7 +547,7 @@ PYBIND11_MODULE(_pyngam, m) {
         py::arg("stellar_spectrum"),
         py::arg("radius") = 0.0,
         py::arg("variable_gravity") = false,
-        NGAM_MODEL_CONFIG_ARGS,
+        BAERLI_MODEL_CONFIG_ARGS,
         py::keep_alive<1, 2>(),
         "Irradiated gas planet without a surface.\n"
         "  internal_temperature   K; sets the internal flux sigma T_int^4\n"
@@ -570,7 +568,7 @@ PYBIND11_MODULE(_pyngam, m) {
         py::arg("zenith_angle"),
         py::arg("stellar_spectrum"),
         py::arg("surface"),
-        NGAM_MODEL_CONFIG_ARGS,
+        BAERLI_MODEL_CONFIG_ARGS,
         py::keep_alive<1, 2>(),
         "Irradiated planet with a solid surface.\n"
         "  surface_gravity        cm/s^2\n"

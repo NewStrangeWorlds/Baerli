@@ -1,22 +1,10 @@
 /*
-* This file is part of the BeAR code (https://github.com/newstrangeworlds/BeAR).
-* Copyright (C) 2024 Daniel Kitzmann
-*
-* BeAR is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* BeAR is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You find a copy of the GNU General Public License in the main
-* BeAR directory under <LICENSE>. If not, see
-* <http://www.gnu.org/licenses/>.
-*/
-
+ * This file is part of Bärli, a radiative-convective atmosphere model.
+ * Copyright (C) 2024-2026 Daniel Kitzmann
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * See the LICENSE file in the repository root for the full license text.
+ */
 
 #ifndef _radiative_transfer_h
 #define _radiative_transfer_h
@@ -29,7 +17,7 @@
 #include "../additional/quadrature.h"
 
 
-namespace ngam {
+namespace baerli {
 
 
 struct RadiativeTransferOutput {
@@ -112,7 +100,7 @@ struct RadiativeTransferOutput {
   // linearised temperature correction before calling RadiativeTransfer::calculate.
   bool compute_jacobian = false;
 
-  // Frequency-integrated net radiative heating and temperature Jacobians, ngam grid
+  // Frequency-integrated net radiative heating and temperature Jacobians, Baerli grid
   // indexing ([i] / [i][j], 0 = bottom). DISORT's own flux divergence is used (rather than
   // a kappa*(J-B) reconstruction) so that net_heating = 0 is exactly equivalent to a
   // constant DISORT net flux -- avoiding the J/flux stencil mismatch.

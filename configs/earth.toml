@@ -1,6 +1,6 @@
 # Modern Earth, radiative-convective equilibrium.
 #
-#   python -m pyngam configs/earth.toml
+#   python -m baerli configs/earth.toml
 #
 # The sections mirror the Python interface: [grid] is a SpectralGrid factory and its arguments,
 # [model] the model class and its keyword arguments, [initial_profile] the initialize() spec.

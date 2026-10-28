@@ -1,15 +1,15 @@
 import numpy as np
 
-import pyngam
-from pyngam import save_model, mixing_ratios, KineticsCoupling, load_vulcan
+import baerli
+from baerli import save_model, mixing_ratios, KineticsCoupling, load_vulcan
 
 
 # --- Model configuration ---
 #
 # The brown dwarf of run_brown_dwarf.py, coupled to the neoVULCAN chemical kinetics code
-# (https://github.com/NewStrangeWorlds/neoVULCAN). ngam solves the radiative-convective
+# (https://github.com/NewStrangeWorlds/neoVULCAN). Baerli solves the radiative-convective
 # equilibrium with the composition frozen, neoVULCAN the chemical steady state for that
-# atmosphere on its own grid, and pyngam.KineticsCoupling alternates the two until both agree.
+# atmosphere on its own grid, and baerli.KineticsCoupling alternates the two until both agree.
 #
 # The chemistry list ends in ("external", {}), the module that receives neoVULCAN's composition;
 # the quench approximation in between seeds the kinetics on the first pass.
@@ -36,10 +36,10 @@ opacity_species = [
 
 # --- Build the model ---
 
-grid = pyngam.SpectralGrid.constant_resolution(
+grid = baerli.SpectralGrid.constant_resolution(
     opacity_path, resolution=1000.0, wavelength_min=0.3, wavelength_max=100.0)
 
-model = pyngam.BrownDwarf(
+model = baerli.BrownDwarf(
     grid,
     effective_temperature=1000.0,      # K
     surface_gravity=10**4.5,           # cm/s^2
@@ -61,7 +61,7 @@ model.initialize(("milne", dict(kappa_ross=1e-2)))
 
 # --- Build the kinetics code ---
 #
-# neoVULCAN reads its thermodynamic data relative to its base directory, ngam's FastChem
+# neoVULCAN reads its thermodynamic data relative to its base directory, Baerli's FastChem
 # parameter file relative to this directory, so the kinetics code is initialised (and later
 # driven) from its own directory. load_vulcan takes care of the former, workdir= of the latter.
 
@@ -112,6 +112,6 @@ for p_bar in (10.0, 1.0, 0.1, 0.01):
     print(f"{pressure[i]:10.2e} " + " ".join(f"{table[i, k]:9.2e}" for k in range(len(symbols))))
 
 
-# --- Save (the full ngam configuration is stored in the file) ---
+# --- Save (the full Baerli configuration is stored in the file) ---
 
 save_model("output_brown_dwarf_neovulcan.nc", model)

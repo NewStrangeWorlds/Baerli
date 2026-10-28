@@ -36,9 +36,9 @@ def save_model(filename, model, grid=None, attrs=None):
     ----------
     filename : str
         Output file path (e.g. "output.nc").
-    model : pyngam.BrownDwarf / GasPlanet / TerrestrialPlanet
+    model : baerli.BrownDwarf / GasPlanet / TerrestrialPlanet
         The model object after compute() has been called.
-    grid : pyngam.SpectralGrid, optional
+    grid : baerli.SpectralGrid, optional
         The spectral grid; defaults to the grid the model was built with.
     attrs : dict, optional
         Additional global attributes.
@@ -48,7 +48,7 @@ def save_model(filename, model, grid=None, attrs=None):
     ``build_model`` can rebuild the model from it. Scalar entries are additionally stored as
     flat attributes for convenience.
     """
-    from . import _pyngam
+    from . import _baerli
 
     if grid is None:
         grid = getattr(model, "grid", None)
@@ -57,7 +57,7 @@ def save_model(filename, model, grid=None, attrs=None):
 
     atm = model.atmosphere
     rf = model.radiation_field
-    species_names = _pyngam.species_symbols()
+    species_names = _baerli.species_symbols()
     nb_species = len(species_names)
 
     ds = xr.Dataset(
@@ -119,7 +119,7 @@ def save_model(filename, model, grid=None, attrs=None):
             "species_name": ("species", species_names[:nb_species]),
         },
         attrs={
-            "title": "ngam model output",
+            "title": "Baerli model output",
         },
     )
 
