@@ -11,3 +11,4 @@ __pycache__/*
 prototyping/*
 
 _deps/*
+tests/__pycache__/*
