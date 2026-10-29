@@ -2,11 +2,15 @@ Bärli
 =====
 
 **Bärli** (ASCII: *Baerli*) computes one-dimensional radiative-convective equilibrium
-atmospheres of brown dwarfs, gas giant planets and terrestrial planets. A compiled C++ core
-does the heavy lifting: opacity sampling of line-by-line cross sections, multi-stream radiative
-transfer with analytic temperature Jacobians, equilibrium and disequilibrium chemistry,
-mixing-length convection, condensate clouds, and a family of Newton-type and relaxation solvers
-for the temperature structure. Everything is driven from the Python package ``baerli``.
+atmospheres of brown dwarfs, gas giant planets and terrestrial planets, developed at the 
+Universit of Bern. 
+In Swiss German,  **Bärli** means "little bear", a nod to the fact that it inherits some of its code from 
+the BeAR retrieval codebase.
+
+A compiled C++ core does the heavy lifting: opacity sampling of line-by-line cross sections, 
+multi-stream radiative transfer with analytic temperature Jacobians, equilibrium and disequilibrium 
+chemistry, mixing-length convection, condensate clouds, and a family of Newton-type and relaxation 
+solvers for the temperature structure. Everything is driven from the Python package ``baerli``.
 
 .. code-block:: python
 
