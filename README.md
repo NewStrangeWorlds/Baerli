@@ -1,9 +1,9 @@
 # Bärli
 
-Under development :)
+I am is still under development :)
 
-Bärli (ASCII: Baerli) computes radiative-convective equilibrium atmospheres of brown dwarfs, gas planets and
-terrestrial planets. The C++ core is used through the `baerli` Python package.
+**Bärli** (ASCII: Baerli), developed at the University of Bern, computes one-dimensional radiative-convective equilibrium atmospheres of brown dwarfs, gas giant planets and terrestrial planets. In Swiss German, **Bärli** means “little bear”, a nod to the fact that it inherits some of its code from the BeAR retrieval codebase.
+The C++ core is used through the `baerli` Python package.
 
 ## Building
 
