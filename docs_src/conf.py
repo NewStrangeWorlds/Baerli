@@ -72,9 +72,11 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_show_sourcelink = False
 html_copy_source = False
-html_logo = "_static/baerli_logo.png"
+
 
 html_theme_options = {
+    "light_logo": "baerli-badge-light.png",
+    "dark_logo": "baerli-badge-dark.png",
     "light_css_variables": {
         "color-brand-primary": "#8b4513",
         "color-brand-content": "#a0522d",
