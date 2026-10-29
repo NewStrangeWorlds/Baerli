@@ -1,9 +1,8 @@
 Bärli
 =====
 
-**Bärli** (ASCII: *Baerli*) computes one-dimensional radiative-convective equilibrium
-atmospheres of brown dwarfs, gas giant planets and terrestrial planets, developed at the 
-Universit of Bern. 
+**Bärli** (ASCII: *Baerli*), developed at the  University of Bern, computes one-dimensional 
+radiative-convective equilibrium atmospheres of brown dwarfs, gas giant planets and terrestrial planets.
 In Swiss German,  **Bärli** means "little bear", a nod to the fact that it inherits some of its code from 
 the BeAR retrieval codebase.
 
