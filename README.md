@@ -1,4 +1,13 @@
+
 # Bärli
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="baerli_logo/baerli-lockup-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="baerli_logo/baerli-lockup-light.png">
+    <img alt="Bärli logo" src="baerli_logo/baerli-lockup-light.png" width="400">
+  </picture>
+</p>
 
 I am is still under development :)
 

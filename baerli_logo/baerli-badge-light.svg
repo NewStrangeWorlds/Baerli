@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bärli badge" viewBox="0 0 240 240" width="1024" height="1024">
+<defs><clipPath id="bclip"><circle cx="120" cy="120" r="108"/></clipPath></defs>
+<g clip-path="url(#bclip)">
+<rect x="0" y="0" width="240" height="60" fill="#0E3A55"/><rect x="0" y="60" width="240" height="34" fill="#15597F"/>
+<rect x="0" y="94" width="240" height="30" fill="#2F7E9E"/><rect x="0" y="124" width="240" height="30" fill="#E9B98C"/>
+<rect x="0" y="154" width="240" height="100" fill="#D9824F"/>
+<path d="M70 14 C70 40 71 62 76 78 C84 100 110 120 150 160" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<g transform="translate(120 236) scale(0.66) translate(-120 -216)"><g fill="#0F0E0F" stroke="#0F0E0F" stroke-width="18" stroke-linejoin="round"><circle cx="58" cy="66" r="32"/><circle cx="182" cy="66" r="32"/><path d="M120 50 C178 50 214 88 214 138 C214 188 172 216 120 216 C68 216 26 188 26 138 C26 88 62 50 120 50 Z"/></g>
+<circle cx="58" cy="66" r="32" fill="#F1AD79"/><circle cx="182" cy="66" r="32" fill="#F1AD79"/>
+<circle cx="61" cy="70" r="18" fill="#8A4F30"/><circle cx="179" cy="70" r="18" fill="#8A4F30"/>
+<path d="M120 50 C178 50 214 88 214 138 C214 188 172 216 120 216 C68 216 26 188 26 138 C26 88 62 50 120 50 Z" fill="#F1AD79"/>
+<g fill="none" stroke="#8A4F30" stroke-width="7" stroke-linecap="round"><path d="M96 70 q8 -6 16 0 t16 0 t16 0"/><path d="M90 86 q10 -6 20 0 t20 0 t20 0"/></g>
+<ellipse cx="62" cy="168" rx="15" ry="10" fill="#E8836A" opacity="0.55"/><ellipse cx="178" cy="168" rx="15" ry="10" fill="#E8836A" opacity="0.55"/>
+<ellipse cx="120" cy="170" rx="46" ry="35" fill="#F4D4BA"/>
+<ellipse cx="80" cy="126" rx="14" ry="16" fill="#0F0E0F"/><ellipse cx="160" cy="126" rx="14" ry="16" fill="#0F0E0F"/>
+<circle cx="75" cy="119" r="5.5" fill="#fff"/><circle cx="155" cy="119" r="5.5" fill="#fff"/>
+<circle cx="84" cy="132" r="2.2" fill="#fff"/><circle cx="164" cy="132" r="2.2" fill="#fff"/>
+<path d="M104 150 C104 142 136 142 136 150 C136 160 126 166 120 166 C114 166 104 160 104 150 Z" fill="#0F0E0F"/>
+<ellipse cx="114" cy="148" rx="5" ry="3" fill="#fff" opacity="0.8"/>
+<path d="M120 166 V174" stroke="#0F0E0F" stroke-width="5" stroke-linecap="round"/>
+<path d="M102 176 C108 196 132 196 138 176 C130 180 110 180 102 176 Z" fill="#0F0E0F" stroke="#0F0E0F" stroke-width="4" stroke-linejoin="round"/>
+<path d="M111 186 C114 193 126 193 129 186 C124 183 116 183 111 186 Z" fill="#E0665A"/></g>
+</g><circle cx="120" cy="120" r="108" fill="none" stroke="#0F0E0F" stroke-width="9"/></svg>
