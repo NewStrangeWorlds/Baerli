@@ -1,7 +1,7 @@
 
 # Bärli
 
-<p align="center">
+<p align="left">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="baerli_logo/baerli-lockup-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="baerli_logo/baerli-lockup-light.png">
